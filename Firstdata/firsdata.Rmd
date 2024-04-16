@@ -1,0 +1,1313 @@
+---
+title: "Analys first data"
+author: "Awabousso"
+date: "2024-04-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Analyse des données du 20240305 
+
+## Importation des données  
+Il faut se mettre dans le dossier où vous avez votre data 
+
+```{r}
+library(readr)
+library(openxlsx)
+df  <- read_tsv("E:/stageAwa/first/firstdata/20240305_140028_410_MBJ_directDIA_test5_Report.tsv")
+## affichage 
+#View(df)
+```
+
+### Importation de tous les library necessaire pour la suite de mes analyses 
+
+```{r}
+library(FactoMineR) ## pour la PCA 
+library(gtsummary)## pour summary 
+library(mice)
+library(tidyverse)
+library(tidyr) 
+library(preprocessCore)
+library(pheatmap)
+library(bestNormalize)#library(MSnSet.utils) 
+library(circlize) # colorRamp2
+library(ComplexHeatmap) # additional modifications
+library(dplyr) # %>%
+library(ggpubr)
+library(factoextra) ## Pour le clustering
+library(openxlsx) ### pour les fichiers excel
+library(DOSE)
+library(enrichplot)
+library(Biobase)
+library(fgsea)
+library(clusterProfiler)
+library(topGO)
+library(Glimma)
+library(limma)
+library(openxlsx
+        )
+library(ComplexHeatmap)
+#library(biomaRt)
+
+```
+
+
+## Modification des données car il y a la présence de NaN
+Remplacer les NaN par NA pour faciliter l'analyse dans R 
+
+
+```{r}
+# copie du data 
+df_bis <- df 
+
+### remplacer les NaN par NA
+for (col in names(df_bis)[-1]) {
+  df_bis[[col]] <- gsub(",", ".", as.character(df_bis[[col]]))
+  df_bis[[col]] <- ifelse(df_bis[[col]] == "NaN", NA, df_bis[[col]])
+}
+
+
+# Convertir toutes les colonnes en format numérique
+df_bis[] <- lapply(df_bis, as.numeric)
+# Affichage
+#View(df_bis)
+
+```
+
+## Mettre la première colonne (**PG.ProteinGroups**) en tant que nom des lignes 
+```{r}
+# j'enléve la  premiére colonne 
+df_bis<-as.matrix(df_bis[,-1])  
+# Mettre la première colonne (**PG.ProteinGroups**) en tant que nom des lignes 
+rownames(df_bis)<-df$PG.ProteinGroups
+
+# Affichage 
+#View(df_bis)
+
+```
+
+
+##  Remplacer les NA par zéro pour faciliter la suite des analyses  
+* Mettre en log 2 les données s'ils ne sont pas logées 
+* On note la présence de -Inf apres la modification 
+* On remplace c'est -Inf à zéro
+
+```{r}
+#  Remplacer les Na par 0
+df_bis[is.na(df_bis)] <- 0
+# Mettre en log2 les données 
+dfbis_log2 <- log2(df_bis)
+# Remplacer les valeurs -Inf par 0
+dfbis_log2[is.infinite(dfbis_log2) & dfbis_log2 == -Inf] <- 0
+```
+
+## Decontamination des données et filtre des données 
+
+
+### **Nettoyage des données ** 
+
+```{r}
+# Créer une expression régulière pour les noms à supprimer
+patterns <- c("^ENS", "^H-INV", "^REFSEQ")
+
+# Créer un vecteur de booléens indiquant quelles lignes correspondent à ces motifs
+rows_to_remove <- grepl(paste(patterns, collapse = "|"), rownames(dfbis_log2))
+
+# Supprimer les lignes correspondantes
+df_filtered <- dfbis_log2[!rows_to_remove, ]
+#View(df_filtered)
+dim(df_filtered)
+
+```
+###  je supprime les  Proteines groupes qui diffèrent de 1 ou 2 acides aminés, on a pas pu identifier le peptides qui entre les protéines.
+je vais les enléver 
+
+```{r}
+
+
+# Identifier les lignes à supprimer
+rows_to_remove <- grepl("^[A-Z0-9]+(;[A-Z0-9]+)+$", rownames(df_filtered))
+
+# Filtrer le dataframe
+df_special <- df_filtered[rows_to_remove, ]
+df_filtered <- df_filtered[!rows_to_remove, ]
+dim(df_filtered)
+
+
+# Identifier les lignes contenant le motif spécifié
+rows_to_remove <- grepl("^[A-Z0-9]+;[A-Z0-9]+-[0-9]$", rownames(df_filtered))
+
+# Supprimer les lignes correspondantes
+df_filtered <- df_filtered[!rows_to_remove, , drop = FALSE]
+
+dim(df_filtered)  # Vérifiez les dimensions après avoir supprimé les lignes
+
+#View(df_filtered)
+
+# Calculer la somme des valeurs de chaque ligne
+row_sums <- rowSums(df_filtered)
+
+# Identifier les lignes avec une somme égale à zéro
+rows_to_remove <- row_sums == 0
+
+# Supprimer les lignes avec une somme égale à zéro
+df_filtered <- df_filtered[!rows_to_remove, ]
+dim(df_filtered)
+
+df_filtered <- df_filtered[!(rownames(df_filtered) %in% c("A2AB72", "Q1RMK2")), ]
+dim(df_filtered)
+
+#ss <- data.frame(ss = df_filtered)
+#output_file1 <- "rchr.xlsx"
+#ss <- round(ss,2)
+# Écrire le dataframe dans le fichier Excel
+#write.xlsx(ss, file = output_file1, rowNames = TRUE)
+```
+### suppression des Proteines non humaine 
+```{r}
+# Charger la bibliothèque readxl
+library(readxl)
+
+# Chemin vers le fichier Excel sur votre ordinateur des données téléchargés en Uniprot online
+chemin <- "E:/stageAwa/first/unip.xlsx"
+
+# Lire le fichier Excel
+donnees <- read_excel(chemin)
+dim(donnees)
+#  Afficher les premières lignes du fichier pour vérifier l'importation
+#View(donnees)
+donnes <- as.matrix(donnees)
+#View(donnees)
+
+```
+
+
+```{r}
+# Copier df_filtered dans df_filtered_copy
+df_filtered_copy <- df_filtered
+
+#Changement des nom de lignes en organisme dans le fichier donnée 
+row.names(df_filtered_copy) <- donnees$E
+
+#Suppression de toutes les lignes qui ne sont pas Homo sapiens 
+df_filtered_human <- subset(df_filtered_copy, row.names(df_filtered_copy) == "Homo sapiens (Human)")
+dim(df_filtered_human)
+
+# Suppression des lignes qui ne sont pas Homo sapiens 
+donnees <- subset(donnees,donnees$E == "Homo sapiens (Human)")
+dim(donnees)
+
+### Remettre les noms de lignes en Gènes 
+rownames(df_filtered_human)<- donnees$D
+
+View(df_filtered_human)
+# Écrire le dataframe dans le fichier Excel
+#write.xlsx(aa, file = output_file1, rowNames = TRUE)
+
+# Verification avant de lancer ce code  il faut bien regarder s'il y a des nom des lignes avec Na  
+which(is.na(row.names(df_filtered_human)))
+
+# Si c'est le cas regardé quel gène correspondant à cette ligne ou ces ligne et le(s) remplacer 
+rownames(df_filtered_human)[2663] <- "Q709F0"
+which(is.na(row.names(df_filtered_human)))
+#(df_filtered_copy)[2665]
+#View(dfbis_log2)
+```
+
+
+
+## Filtrer les données par sous-ensemble  puis qu'on a 3 groupes d'echantillons 
+
+* EJ10 ( post_implantatoire ) avec 5 pools 
+* PB ( blastocyste) avec 5 pools 
+* PM ( Morula) avec 6 pools 
+
+```{r}
+# Trouver les colonnes contenant le terme "EJ10"
+columns_to_keep <- grep("EJ10", colnames(df_filtered_human), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_EJ10 <- df_filtered_human[, columns_to_keep]
+### Trouver tous les colonnes contenant le terme "PB"
+columns_to_keep <- grep("PB", colnames(df_filtered_human), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_PB  <- df_filtered_human[, columns_to_keep]
+
+### Trouver tous les colonnes contenant le terme "PB"  et "pools"
+columns_to_keep <- grep("PM|Pool", colnames(df_filtered_human), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_PM  <- df_filtered_human[, columns_to_keep]
+```
+
+
+##  Distribution de la quantité de protéines dans chaque sous-ensemble 
+Pour ce faire je supprime  avant les lignes avec des zéros dans toutes les colonnes pour chaque sous-ensemble pour ne pas introduire de conclusion fausse à partir des données.
+
+
+* <span style="color: #FF0000"> EJ10 stade J10 </span>
+
+```{r}
+# Supprimer les lignes avec des zéros dans toutes les colonnes
+df_EJ10t <- df_EJ10[rowSums(df_EJ10 == 0) == 0,]
+dim(df_EJ10)
+# Créer un histogramme pour visualiser la distribution
+par(mfrow = c(1, 5), bg="white")
+hist(df_EJ10t[,1],breaks="Sturges",xlab="Protein Quantity ",ylab="Frequency",main=" EJ10 colonne 1 ",col = "magenta3")
+hist(df_EJ10t[,2],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 2 ",col = "cyan2")
+hist(df_EJ10t[,3],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 3 ",col = "chartreuse2")
+hist(df_EJ10t[,4],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 4 ",col = "cyan1")
+hist(df_EJ10t[,5],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 5 ",col="violetred2")
+```
+
+* <span style="color: #FF0000">  PB stade Blastocyste  </span> 
+
+```{r}
+# Supprimer les lignes avec des zéros dans toutes les colonnes
+df_PBt <- df_PB[rowSums(df_PB == 0) == 0,]
+dim(df_PB)
+# Créer un histogramme pour visualiser la distribution 
+par(mfrow = c(1, 5), bg="white")
+hist(df_PBt[,1],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PB1 ",col = "magenta3")
+hist(df_PBt[,2],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PB2 ",col = "cyan2")
+hist(df_PBt[,3],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main="PB3 ",col = "chartreuse2")
+hist(df_PBt[,4],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PB4 ",col = "cyan1")
+hist(df_PBt[,5],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PB5 ",col="violetred2")
+
+
+
+
+
+```
+
+
+* <span style="color: #FF0000">  PM Morula  </span> 
+
+```{r}
+# Supprimer les lignes avec des zéros dans toutes les colonnes
+df_PMt <- df_PM[rowSums(df_PM== 0) == 0,]
+dim(df_PM)
+# Créer un histogramme pour visualiser la distribution 
+par(mfrow = c(1, 6), bg="white")
+  
+hist(df_PMt[,1],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PM2 ",col = "magenta3")
+hist(df_PMt[,2],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PM3 ",col = "cyan2")
+hist(df_PMt[,3],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main="PM4 ",col = "chartreuse2")
+hist(df_PMt[,4],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PM5 ",col = "cyan1")
+hist(df_PMt[,5],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PM6 ",col = "cyan4")
+hist(df_PMt[,6],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PM7 ",col="violetred2")
+```
+
+
+##  Pour les sous-ensemble on regarde il y a combien de proteines qui sont présentes 0/5 ainsi de suite 
+
+* <span style="color: #FF0000"> EJ10 stade J10 </span>
+
+
+```{r}
+# Créer une copie du dataframe avec des valeurs binaires (1 si la valeur est différente de zéro, sinon 0)
+df_binary <- df_EJ10!= 0
+
+# Calculer le nombre de colonnes
+num_columns <- ncol(df_binary)
+
+# Calculer la somme des valeurs binaires pour chaque ligne
+presence_counts <- rowSums(df_binary)
+# Compter le nombre de protéines présentes dans chaque combinaison de colonnes
+counts <- table(presence_counts)
+
+# Afficher le résultat
+print(counts)
+```
+
+* <span style="color: #FF0000">  PB stade Blastocyste  </span> 
+
+```{r}
+# Créer une copie du dataframe avec des valeurs binaires (1 si la valeur est différente de zéro, sinon 0)
+df_binary <- df_PB != 0
+
+# Calculer le nombre de colonnes
+num_columns <- ncol(df_binary)
+
+# Calculer la somme des valeurs binaires pour chaque ligne
+presence_counts <- rowSums(df_binary)
+
+
+# Compter le nombre de protéines présentes dans chaque combinaison de colonnes
+counts <- table(presence_counts)
+
+# Afficher le résultat
+print(counts)
+```
+
+
+
+
+
+* <span style="color: #FF0000">  PM Morula  </span> 
+
+```{r}
+# Créer une copie du dataframe avec des valeurs binaires (1 si la valeur est différente de zéro, sinon 0)
+df_binary <- df_PM != 0
+
+# Calculer le nombre de colonnes
+num_columns <- ncol(df_binary)
+
+# Calculer la somme des valeurs binaires pour chaque ligne
+presence_counts <- rowSums(df_binary)
+
+
+# Compter le nombre de protéines présentes dans chaque combinaison de colonnes
+counts <- table(presence_counts)
+
+# Afficher le résultat
+print(counts)
+```
+
+## Analyses 2 à 2 des sous groupes 
+
+* Les Protéines qui match entre deux échantillons
+ * <span style="color: #FF0000">Protéines matches entre EJ10 et PB </span> 
+```{r}
+# Calculer le nombre de valeurs n dans les cinq premières colonnes pour chaque ligne
+a<-rowSums(df_EJ10[,1:5])
+### Filtrer le dataframe pour ne conserver que les lignes avec au moins une valeur non nulle dans les cinq premières colonnes
+EJ10filtered <- subset(df_EJ10, a > 0)
+# Calculer le nombre de valeurs n dans les cinq premières colonnes pour chaque ligne
+a<-rowSums(df_PB[,1:5])
+### Filtrer le dataframe pour ne conserver que les lignes avec au moins une valeur non nulle dans les cinq premières colonnes
+PBfiltered <- subset(df_PB, a > 0)
+# Calculer le nombre de valeurs n dans les cinq premières colonnes pour chaque ligne
+a<-rowSums(df_PM[,1:6])
+### Filtrer le dataframe pour ne conserver que les lignes avec au moins une valeur non nulle dans les cinq premières colonnes
+PMfiltered <- subset(df_PM, a > 0)
+
+
+
+# Extraire les noms des protéines de chaque dataframe
+proteins_df_EJ10 <- rownames(EJ10filtered)
+proteins_df_PB <- rownames(PBfiltered)
+
+#View(EJ10filtered)
+# Trouver les protéines qui correspondent entre les deux dataframes
+matching_proteins <- intersect(proteins_df_EJ10, proteins_df_PB)
+
+#print(matching_proteins)
+
+# Compter le nombre de protéines correspondantes
+nombre_proteines_correspondantes <- length(matching_proteins)
+
+# Afficher le nombre de protéines correspondantes
+#print(nombre_proteines_correspondantes)
+
+# Trouver les protéines présentes dans df_EJ10 mais absentes dans df_PB
+
+proteins_only_in_EJ10 <- setdiff( proteins_df_EJ10,proteins_df_PB)
+# Trouver les protéines présentes dans  df_PB mais absentes dans df_EJ10
+proteins_only_in_PB<- setdiff(proteins_df_PB,proteins_df_EJ10)
+
+
+
+#Compter le nombre de protéines présentes uniquement dans df_PB
+print(length(proteins_only_in_EJ10))
+#Compter le nombre de protéines présentes uniquement dans df_PM
+print(length(proteins_only_in_PB))
+
+# Calculer la moyenne des protéines uniques dans chaque échantillon
+mean_EJ10 <- rowMeans(EJ10filtered[proteins_only_in_EJ10, ])
+mean_EJ10 <- round(log2(mean_EJ10),2)
+mean_EJ10 <- mean_EJ10[order(mean_EJ10,decreasing=FALSE)]
+mean_PB <- rowMeans(PBfiltered[proteins_only_in_PB, ])
+
+mean_PB <- round(log2(mean_PB),2)
+mean_PB <- mean_PB[order(mean_PB,decreasing=FALSE)]
+
+# Créer un dataframe contenant les moyennes
+mean_df <- data.frame(Mean_EJ10 = mean_EJ10)
+
+# Créer un dataframe contenant les moyennes
+mean_df2 <- data.frame(mean_PB = mean_PB)
+# Spécifier le nom du fichier Excel de sortie
+output_file <- "PBvsEJ10_EJ10uniquemeans .xlsx"
+
+# Spécifier le nom du fichier Excel de sortie
+output_file1 <- "PBvsEJ10_PBuniquemeans .xlsx"
+
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(mean_df, file = output_file, rowNames = TRUE)
+
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(mean_df2, file = output_file1, rowNames = TRUE)
+
+
+```
+ * <span style="color: #FF0000">Protéines matches entre PB et PM </span>
+ 
+ 
+```{r}
+
+# Extraire les noms des protéines de chaque dataframe
+proteins_df_EJ10 <- rownames(EJ10filtered)
+proteins_df_PM <- rownames(PMfiltered)
+
+
+# Trouver les protéines qui correspondent entre les deux dataframes
+matching_proteins <- intersect(proteins_df_EJ10, proteins_df_PM)
+
+#print(matching_proteins)
+
+# Compter le nombre de protéines correspondantes
+nombre_proteines_correspondantes <- length(matching_proteins)
+
+# Afficher le nombre de protéines correspondantes
+#print(nombre_proteines_correspondantes)
+
+
+proteins_only_in_EJ10 <- setdiff( proteins_df_EJ10,proteins_df_PM)
+
+proteins_only_in_PM<- setdiff(proteins_df_PM,proteins_df_EJ10)
+
+#Compter le nombre de protéines présentes uniquement dans df_PB
+print(length(proteins_only_in_EJ10))
+#Compter le nombre de protéines présentes uniquement dans df_PM
+print(length(proteins_only_in_PM))
+
+
+# Calculer la moyenne des protéines uniques dans chaque échantillon
+mean_EJ10 <- rowMeans(EJ10filtered[proteins_only_in_EJ10, ])
+mean_EJ10 <- round(log2(mean_EJ10),2)
+mean_EJ10 <- mean_EJ10[order(mean_EJ10,decreasing=FALSE)]
+
+
+# Créer un dataframe contenant les moyennes
+mean_df <- data.frame(Mean_EJ10 = mean_EJ10)
+
+# Spécifier le nom du fichier Excel de sortie
+output_file <- "PMvsEJ10_EJ10uniquemeans .xlsx"
+
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(mean_df, file = output_file, rowNames = TRUE)
+
+
+# Calculer la moyenne des protéines uniques dans chaque échantillon
+mean_PM <- rowMeans(PMfiltered[proteins_only_in_PM, ])
+
+mean_PM <- round(log2(mean_PM),2)
+mean_PM <- mean_PM[order(mean_PM,decreasing=FALSE)]
+# Créer un dataframe contenant les moyennes
+mean_df2 <- data.frame(Mean_PM = mean_PM)
+# Spécifier le nom du fichier Excel de sortie
+output_file1 <- "PMvsEJ10_PMuniquemeans .xlsx"
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(mean_df2, file = output_file1, rowNames = TRUE)
+
+
+
+```
+
+
+## Analyses differentielle
+* PCA 
+Création d'une table de notation pour la suite de mes analyses sur les données
+```{r}
+samples <- c("[1]410_EJ10-test2_OT_Slot2-2_1_6949.d.PG.Quantity" , "[2]410_EJ10-test2_Slot2-2_1_6947.d.PG.Quantity", 
+ "[3]410_EJ10-test2_TClow_Slot2-3_1_6951.d.PG.Quantity" , "[4]410_EJ10-test5_TClow_Slot2-1_1_6953.d.PG.Quantity","[5]410_EJ10-test_Slot2-1_1_6944.d.PG.Quantity" ,"[6]404_PB1_Slot1-22_1_5701.d.PG.Quantity","[7]404_PB2_Slot1-16_1_5695.d.PG.Quantity" ,"[8]404_PB3_Slot1-14_1_5693.d.PG.Quantity","[9]404_PB4_Slot1-20_1_5699.d.PG.Quantity" ,"[10]404_PB5_Slot1-18_1_5697.d.PG.Quantity","[11]404_PM2_Slot1-15_1_5694.d.PG.Quantity" ,"[12]404_PM3_Slot1-17_1_5696.d.PG.Quantity"           
+,"[13]404_PM4_Slot1-19_1_5698.d.PG.Quantity"           
+, "[14]404_PM5_Slot1-21_1_5700.d.PG.Quantity"           
+, "[15]404_PM6_Slot1-23_1_5702.d.PG.Quantity"           
+,"[16]404_Poolx5MC_Slot1-33_1_5531.d.PG.Quantity" )
+stades <- c("EJ10", "EJ10","EJ10","EJ10","EJ10","PB", "PB","PB","PB","PB","PM", "PM","PM","PM","PM","PM")
+
+# Combinaison des deux vecteurs pour former une matrice avec deux colonnes
+tblnot <- cbind(samples, stades)
+
+# Spécifier le nom de votre fichier de sortie
+output_file <- "tblnot.tsv"
+
+# Écrire la matrice dans un fichier TSV
+write.table(tblnot, file = output_file, sep = "\t", quote = FALSE, row.names = FALSE)
+```
+
+
+
+```{r}
+library(FactoMineR)
+library(RColorBrewer)
+### pca resultat
+#dfbis_log2
+pca.res <- PCA(t(df_filtered_human),scale.unit = TRUE, ncp = 5, graph = FALSE)
+# Total contribution on PC1 and PC2
+
+
+my_colors <- c("EJ10" = "#5e17eb", "PB" = "#43e5cd", "PM" = "#cb01cb")
+
+# Utiliser la palette de couleurs personnalisée dans le plot PCA
+fviz_pca_ind(pca.res, geom = "point",
+             col.ind = tblnot[, 2], 
+             palette = my_colors, repel = TRUE,addEllipses = FALSE, subtitle = "Proteomics data set", legend.title = "Stades",title = "Principal Component Analysis",col.ind.sup = "blue"
+             )
+```
+
+* HeatMap 
+
+```{r}
+Heatmap(df_filtered_human)
+
+### normal heatmap
+col<- colorRampPalette(c("red", "white", "blue"))(256)
+heatmap(df_filtered_human,scale='row',col=col )
+
+```
+## limma 
+
+### Test statistique pour une certaine proteine dans un certaine groupe (EJ10 ,PB,PM) 
+```{r}
+
+# Créer une copie du dataframe avec les noms de lignes modifiés
+df_filtered_clean <- df_filtered_human
+
+
+# Modifier les noms de lignes pour ne garder que le premier nom
+rownames(df_filtered_clean) <- sub(" .*", "", rownames(df_filtered_clean))
+
+# Assurez-vous que la bibliothèque limma est installée et chargée
+#install.packages("limma")
+library(limma)
+test <- round(df_filtered_clean,2)
+test[!is.finite(test)] <- 0
+
+# Appliquez lmFit pour ajuster le modèle linéaire
+fit <- lmFit(test, design)
+fit<-eBayes(fit)
+# Créez votre design matrix
+design <- model.matrix(~ 0 + factor(tblnot[,2]),data=as.data.frame(test))
+colnames(design) <- c ("EJ10","PB","PM")
+contrasts <- makeContrasts(
+  levels = colnames(design),
+  EJ10_vs_PB = EJ10- PB
+)
+# Test de contraste
+fit_contrast <- contrasts.fit(fit, contrasts)
+fit_contrast <- eBayes(fit_contrast)
+# Correction de la p-value
+results <- decideTests(fit_contrast, method = 'global', p.value = 0.05, adjust.method = "fdr")
+
+# Identification des protéines différentiellement exprimées
+top_proteins <- topTable(fit_contrast, coef = "EJ10_vs_PB", adjust = "fdr", number = Inf)
+
+# Afficher les résultats
+#top_proteins
+# Obtenez les résidus
+residuals <- residuals(fit,test)
+
+# Calculez les écarts-types des coefficients
+coef_stdev <-fit$sigma
+# Calculez les statistiques de test (t-statistics)
+test_statistics <- coef(fit) / coef_stdev
+
+# Déterminez les résultats des tests en fonction des seuils de significativité souhaités
+threshold <- 1.96 # Pour un seuil de 5% (2-tailed) en utilisant la distribution normale standard
+test_results <- abs(test_statistics) > threshold
+
+# Afficher les résultats des tests
+#View(test_results)
+result_df <-  data.frame(EJ10 = test_results[,1])
+                   
+result_df$PB <- test_results[, "PB"]
+result_df$PM <- test_results[, "PM"]
+# Définir le nom du fichier Excel de sortie
+output_file <- "test_results.xlsx"
+
+# Écrire les résultats dans le fichier Excel
+write.xlsx(result_df, file = output_file, rowNames = TRUE)
+
+
+```
+### Visualisation des resultat volcano plot  et MAplot  avec EJ10 vs PB
+```{r}
+#if (!require("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
+
+#BiocManager::install("Glimma")
+library(Glimma)
+# Créez votre design matrix
+design <- model.matrix(~ 0 + factor(tblnot[,2]),data=as.data.frame(df_filtered_clean))
+colnames(design) <- c ("EJ10","PB","PM")
+contrasts <- makeContrasts(
+  levels = colnames(design),
+  EJ10_vs_PB = EJ10- PB
+)
+
+# Test de contraste
+fit_contrast1 <- contrasts.fit(fit, contrasts)
+fit_contrast1 <- eBayes(fit_contrast1)
+
+glimmaMA(fit_contrast1,status.cols=c("#43e5cd", "grey", "#5e17eb"))
+
+
+
+#volcanoplot(fit_contrast1,coef=1,names= "EJ10_vs_PB")
+```
+
+```{r}
+glimmaVolcano(fit_contrast1,status.cols=c("#43e5cd", "grey", "#5e17eb"))
+```
+
+
+### visualisation des resultat volcano plot  avec PM vs PB
+```{r}
+# Créez votre design matrix
+design <- model.matrix(~ 0 + factor(tblnot[,2]),data=as.data.frame(test))
+colnames(design) <- c ("EJ10","PB","PM")
+contrasts <- makeContrasts(
+  levels = colnames(design),
+  PM_vs_PB = PM- PB
+)
+
+# Test de contraste
+fit_contrast2 <- contrasts.fit(fit, contrasts)
+fit_contrast2 <- eBayes(fit_contrast2)
+
+
+glimmaMA(fit_contrast2,status.cols=c("#43e5cd", "grey", "#cb01cb"))
+
+glimmaVolcano(fit_contrast2,status.cols=c("#43e5cd", "grey", "#cb01cb"))
+
+
+```
+### Identification des Proteines differentiellement exprimés 
+On utilise la méthodes False Discovery Rate FDR pout effectuer plusieurs test de correction et fixerons le seuil de signification à 0.01.Cela signifie que seuls les gènes avec des valeurs p ajustées par le FDR < 0,05 ET un changement absolu du facteur log2 de 1 ou plus seront considérés comme **exprimés de manière significativement différentielle** .
+
+```{r}
+results <- decideTests(fit_contrast1, method = 'global',
+                       p.value = 0.01,
+                       adjust.method = "fdr") 
+summary(results)
+
+
+results1 <- decideTests(fit_contrast2, method = 'global',
+                       p.value = 0.01,
+                       adjust.method = "fdr") 
+
+```
+
+
+```{r}
+# Filtrer les gènes exprimés en PM
+genes_PM <- rownames(results1)[results1[,1]== 1]
+
+# Filtrer les gènes exprimés en PB
+genes_PB <- rownames(results1)[results1[,1]== -1]
+
+
+# Filtrer les lignes correspondantes aux gènes exprimés en PM
+df_PM_exp <- df_filtered_human[rownames(df_filtered_human) %in% genes_PM, ]
+#View(df_PM_exp )
+
+
+
+# Filtrer les lignes correspondantes aux gènes exprimés en PB
+df_PB_exp <-df_filtered_human[rownames(df_filtered_human) %in% genes_PB, ]
+#View(df_PB_exp )
+
+```
+
+
+## GO terms analysis 
+
+
+
+
+```{r}
+library(topGO)
+library(org.Hs.eg.db)
+#if (!requireNamespace("BiocManager",quietly=TRUE))  
+#  install.packages("BiocManager")
+#BiocManager::install()
+
+gene_list <- rownames(df_filtered_human)
+go_r <- enrichGO(gene = gene_list, 
+                      OrgDb = org.Hs.eg.db,  # Base de données pour l'organisme d'intérêt, ici Homo sapiens
+                      ont = "CC",            # Aspect biologique de GO, BP pour Biological Process, MF pour Molecular Function, CC pour Cellular Component
+                 keyType = "SYMBOL",
+                      pAdjustMethod = "fdr", # Méthode d'ajustement pour les p-values
+                      pvalueCutoff = 0.05)  
+ggo <- go_r
+head(ggo)
+goplot(ggo)
+
+dotplot(ggo) 
+cnetplot(ggo)
+#cnetplot(ggo, circular = TRUE, colorEdge = TRUE, foldChange=gene_list)
+
+```
+
+
+
+
+### GO sur les gènes differentiellement exprimés 
+#### Cycle de krebs 
+
+```{r}
+
+# Créer une copie du dataframe avec les noms de lignes modifiés
+df_filtered_clean <- df_filtered_human
+
+### Modification des noms de colonnes 
+colnames(df_filtered_clean)<-c("J101","J102","J103","J104","J105","PB1","PB2","PB3","PB4","PB5","PM2","PM3","PM4","PM5","PM6","Pools")
+colnames(df_filtered_clean)
+# Modifier les noms de lignes pour ne garder que le premier nom
+rownames(df_filtered_clean) <- sub(" .*", "", rownames(df_filtered_clean))
+
+# Afficher les premières lignes du dataframe avec les noms de lignes modifiés
+#View(df_filtered_clean)
+
+# Liste des gènes à rechercher
+genes_to_search <- c("CS", "IDH3A", "SUCLG2", "DLST", "OGDH", "SDHA", "SDHB", "SDHD", "SDHCCHAT", "DLD", "FH", "MDH2","IDH2","ACO2","SUCLG1","SUCLA2","IDH3B","IDH3G")
+
+# Création d'un nouveau dataframe vide
+dataframe_krebs <- data.frame()
+
+# Parcours de chaque gène dans la liste
+for (gene in genes_to_search) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+    dataframe_krebs <- rbind(dataframe_krebs, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+
+# Afficher le nouveau dataframe contenant les gènes trouvés dans les données
+"View(dataframe_krebs)
+
+
+
+```
+
+
+#### facteur de transcription 
+
+```{r}
+# Importer le fichier avec tout les Facteurs de Transcription 
+chemin <- "E:/stageAwa/first/TF.xlsx"
+
+# Lire le fichier Excel
+TF <- read_excel(chemin)
+TF
+
+#Modification des nom de lignes 
+row.names(TF) <- TF$TF
+
+
+# Stocker dans une variable les Facteurs de Transcriptions 
+genes_find <- row.names(TF)
+
+# Data frame 
+dataframe_TF <- data.frame()
+
+# Parcours de chaque gène dans la liste
+for (gene in genes_find) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+    dataframe_TF <- rbind(dataframe_TF, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+
+
+# Affichage 
+# View(dataframe_TF)
+
+
+
+```
+#### kinase 
+
+```{r}
+
+#  Importer le fichier avec tout les Kinases  
+chemin <- "E:/stageAwa/first/firstdata/kinome.xlsx"
+
+# Lire le fichier Excel
+kinome <- read_excel(chemin)
+
+# Stockage de la liste des kinases 
+genes_find <- kinome$`HGNC Name`
+
+dataframe_KN <- data.frame()
+# Parcours de chaque gène dans la liste
+for (gene in genes_find) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+    dataframe_KN <- rbind(dataframe_KN, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+
+
+# Affichage 
+#View(dataframe_KN)
+
+
+
+
+```
+
+
+### 
+Cette partie est réalisèe pour avoir le nom des génes que je vais utiliser dans  https://sparql.wikipathways.org/sparql/ pour la liste de gènes  des voies qui m'intérèssent. Le code à lancer est dans un dossier nommer sparql.
+
+```{r}
+
+#Modifaction de la liste genes en un format qui marche avec le package Clusterprofiler 
+g <-bitr(gene_list
+     , fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+
+# Enrichement avec Wikipathways 
+t <- enrichWP(g$ENTREZID , organism = "Homo sapiens")
+# Transformation des résultats en data fram 
+t <- data.frame(t)
+
+```
+
+### Ribosomal 
+
+
+```{r}
+
+#  Importer le fichier avec tout les gènes Ribosomales  
+chemin <- "E:/stageAwa/first/firstdata/Ribosomal.csv"
+# Lire le fichier 
+ribosome <- read_csv(chemin)
+
+# Stockage
+genes_find <- ribosome$geneProduct
+
+dataframe_Ribosome <- data.frame()
+# Parcours de chaque gène dans la liste
+for (gene in genes_find) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+    dataframe_Ribosome <- rbind(dataframe_Ribosome, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+# Affichage 
+#View(dataframe_Ribosome)
+
+
+```
+### Phosphorylation
+```{r}
+
+#  Importer le fichier avec tout les gènes Ribosomales  
+chemin <- "E:/stageAwa/first/firstdata/phosphorylation.csv"
+# Lire le fichier 
+phospho <- read_csv(chemin)
+
+# Stockage
+genes_find <- phospho$geneProduct
+
+dataframe_phospho <- data.frame()
+# Parcours de chaque gène dans la liste
+for (gene in genes_find) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+   dataframe_phospho <- rbind(dataframe_phospho, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+# Affichage 
+#View(dataframe_phospho)
+
+
+```
+
+### Mitochondrial complex III assembly
+```{r}
+
+#  Importer le fichier avec tout les gènes Ribosomales  
+chemin <- "E:/stageAwa/first/firstdata/MitcomplexIII.csv"
+# Lire le fichier 
+MitcomplexIII <- read_csv(chemin)
+
+# Stockage
+genes_find <- MitcomplexIII$geneProduct
+
+dataframe_MitcomplexIII <- data.frame()
+# Parcours de chaque gène dans la liste
+for (gene in genes_find) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+   dataframe_MitcomplexIII <- rbind(dataframe_MitcomplexIII, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+# Affichage 
+#View(dataframe_MitcomplexIII)
+
+
+```
+
+### Glycolysis and gluconeogenesis
+```{r}
+
+#  Importer le fichier avec tout les gènes Ribosomales  
+chemin <- "E:/stageAwa/first/firstdata/Glycolandgluco.csv"
+# Lire le fichier 
+Glycolandgluco <- read_csv(chemin)
+
+# Stockage
+genes_find <- Glycolandgluco$geneProduct
+
+dataframe_Glycolandgluco <- data.frame()
+# Parcours de chaque gène dans la liste
+for (gene in genes_find) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+   dataframe_Glycolandgluco <- rbind(dataframe_Glycolandgluco, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+# Affichage 
+View(dataframe_Glycolandgluco)
+
+
+
+```
+
+### DNA Methylation 
+voie trouve dans The Human Protein Atlas 
+
+```{r}
+#  Importer le fichier avec tout les gènes Ribosomales  
+chemin <- "E:/stageAwa/first/firstdata/DNA_methylation.tsv"
+# Lire le fichier 
+DNA_methylation <- read_tsv(chemin)
+gene_find <- DNA_methylation$Gene
+
+# Création d'un nouveau dataframe vide
+dataframe_methylation <- data.frame()
+
+# Parcours de chaque gène dans la liste
+for (gene in genes_find) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+    dataframe_methylation <- rbind(dataframe_methylation, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+dataframe_methylation
+
+heatmap <- Heatmap(dataframe_methylation, name = "Methylation")
+
+
+heatmap
+
+
+```
+
+### DNA Methylation
+
+```{r}
+
+
+
+```
+
+
+### Un complexHeatmap pour les trois groupes les Kinomes , Krebs , Ribosomal et les facteurs de transcriptions 
+
+
+```{r}
+# Création des Heatmaps
+heatmap1 <- Heatmap(dataframe_KN, name = "kinome")
+heatmap2 <- Heatmap(dataframe_krebs, name = "krebs")
+heatmap3 <- Heatmap(dataframe_TF, name = "TF")#,row_names_gp = gpar(fontsize = 4))
+heatmap4 <- Heatmap(dataframe_Ribosome, name = "Ribosomal")
+heatmap5 <- Heatmap(dataframe_phospho, name = "Oxidation phosphorylation")
+heatmap6 <- Heatmap(dataframe_MitcomplexIII, name = "MitcomplexIII")
+heatmap7 <- Heatmap(dataframe_Glycolandgluco, name = "Glycolysis and gluconeogenesis")
+
+
+heatmap1
+heatmap2
+heatmap3
+heatmap4
+heatmap5
+heatmap6
+heatmap7
+# Extraction des données des heatmaps
+data_heatmap1 <- (heatmap1@matrix)
+data_heatmap2 <- (heatmap2@matrix)
+data_heatmap3 <- (heatmap3@matrix)
+data_heatmap4 <- (heatmap4@matrix)
+colnames(df_filtered_clean)
+
+# Combinaison des données
+combined_data <- rbind(data_heatmap1,data_heatmap2,data_heatmap3)
+
+# Calculer la moyenne de chaque gène
+gene_means <- rowMeans(combined_data)
+
+# Soustraire la moyenne de chaque gène à toutes les valeurs de ce gène
+centered_data <- t(apply(combined_data, 1, function(x) x - gene_means))
+
+# Création d'un nouveau objet Heatmap avec les données combinées
+library(dendextend)
+row_dend = hclust(dist(combined_data)) # row clustering
+col_dend = hclust(dist(t(combined_data))) # column clustering
+col_dend
+new_heatmap <- Heatmap(combined_data, name = "Combined Heatmap",show_heatmap_legend = T,column_names_centered = TRUE,column_title = 'Samples',
+        row_split = rep(c("Kinone", "Krebs", "TF"), c(nrow(data_heatmap1),nrow(data_heatmap2), nrow(data_heatmap3))), cluster_columns = color_branches(col_dend, k = 3),row_names_gp = gpar(fontsize = 2.5) )
+# Facteur de zoom
+zoom_factor <- 2  # Ajustez le facteur de zoom selon vos besoins
+# Création du dossier pour stocker le PDF
+dir.create("output_directory")
+# Chemin complet du fichier PDF
+pdf_file <- file.path("output_directory", "FT_Kinome_Krebs.pdf")
+
+# Ouvrir un fichier PDF
+pdf(pdf_file)
+
+# Dessiner le Heatmap dans le fichier PDF
+draw(new_heatmap)
+
+# Fermer le fichier PDF
+dev.off()
+
+```
+
+
+
+### the pathways  in the Metabolic Atlas
+réalisation de tous les Heatmap de ces voies et Réaliser un complexe Heatmap
+```{r}
+chemins <- c(
+             "pathway_AcylCoA.tsv",
+             "pathway_Acylglycerides.tsv",
+             "pathway_Alanine_.tsv",
+             "pathway_Amino.tsv",
+             "pathway_AminoacyltRNA.tsv",
+             "pathway_Androgen.tsv",
+             "pathway_Arachidonic.tsv",
+             "pathway_Arginine.tsv",
+             "pathway_Ascorbate.tsv",
+             "pathway_BetaOCIFAM.tsv",
+             "pathway_BetaUNSFAM.tsv",
+             "pathway_Bileab.tsv",
+             "pathway_Bilear.tsv",
+             "pathway_Biopterin.tsv",
+             "pathway_Biotin.tsv",
+             "pathway_Blood.tsv",
+             "pathway_Boefam.tsv",
+             "pathway_Boefap.tsv",
+             "pathway_Boofam.tsv",
+             "pathway_Bopap.tsv",
+             "pathway_Bopufam.tsv",
+             "pathway_Boufa9m.tsv",
+             "pathway_Boufap.tsv",
+             "pathway_Bounfa9p.tsv",
+             "pathway_Bounfap.tsv",
+             "pathway_Butanoate.tsv",
+             "pathway_C5-branched.tsv",
+             "pathway_Carnitinecytosolic.tsv",
+             "pathway_Carnitineendoreti.tsv",
+             "pathway_Carnitinemito.tsv",
+             "pathway_Carnitineperi.tsv",
+             "pathway_Cholesterol1.tsv",
+             "pathway_Cholesterol2.tsv",
+             "pathway_Cholesterol3.tsv",
+             "pathway_Cholesterolmetabo.tsv",
+             "pathway_Chondroitin.tsv",
+             "pathway_Chondroitinsulfate.tsv",
+             "pathway_CoA.tsv",
+             "pathway_Cysteine.tsv",
+             "pathway_Drug.tsv",
+             "pathway_Eicosanoid.tsv",
+             "pathway_Estrogen.tsv",
+             "pathway_Ether.tsv",
+             "pathway_Exchange_demand.tsv",
+             "pathway_Fatty.tsv",
+             "pathway_Fattyab.tsv",
+             "pathway_Fattyabec.tsv",
+             "pathway_Fattyacu.tsv",
+             "pathway_Fattyadec.tsv",
+             "pathway_Fattyadod.tsv",
+             "pathway_Fattyaeec.tsv",
+             "pathway_Fattyaeod.tsv",
+             "pathway_Fattyaoxy.tsv",
+             "pathway_Fattyendoreti.tsv",
+             "pathway_Fattyod.tsv",
+             "pathway_Folate.tsv",
+             "pathway_Formation.tsv",
+             "pathway_Fructose.tsv",
+             "pathway_Galactose.tsv",
+             "pathway_Glucocorticoid.tsv",
+             "pathway_Glutathione.tsv",
+             "pathway_Glycerolipid.tsv",
+             "pathway_Glycerophospholipid.tsv",
+             "pathway_Glycine_.tsv",
+             "pathway_Glycolysis.tsv",
+             "pathway_Glycosphingolipid (1).tsv",
+             "pathway_Glycosphingolipid (2).tsv",
+             "pathway_Glycosphingolipid (3).tsv",
+             "pathway_Glycosphingolipid.tsv",
+             "pathway_Glycosylphosphatidylinositol.tsv",
+             "pathway_Heme (1).tsv",
+             "pathway_Heme.tsv",
+             "pathway_Heparan.tsv",
+             "pathway_Histidine.tsv",
+             "pathway_Inositol.tsv",
+             "pathway_Isolated.tsv",
+             "pathway_Keratan (1).tsv",
+             "pathway_Keratan.tsv",
+             "pathway_Leukotriene.tsv",
+             "pathway_Linoleate.tsv",
+             "pathway_Lipoic.tsv",
+             "pathway_Lysine.tsv",
+             "pathway_Metabolism (1).tsv",
+             "pathway_Metabolism.tsv",
+             "pathway_Miscellaneous.tsv",
+             "pathway_N-glycan.tsv",
+             "pathway_Nicotinate.tsv",
+             "pathway_Nucleotide.tsv",
+             "pathway_O-glycan.tsv",
+             "pathway_Omega-3.tsv",
+             "pathway_Omega-6.tsv",
+             "pathway_Oxidative.tsv",
+             "pathway_Pantothenate.tsv",
+             "pathway_Pentose (1).tsv",
+             "pathway_Pentose.tsv",
+             "pathway_Phenylalanine.tsv",
+             "pathway_Phosphatidylinositol.tsv",
+             "pathway_Phenylalanine_.tsv",
+             "pathway_Pool.tsv",
+             "pathway_Porphyrin.tsv",
+             "pathway_Propanoate.tsv",
+             "pathway_Prostaglandin.tsv",
+             "pathway_Protein.tsv",
+             "pathway_Proteindegra.tsv",
+             "pathway_Proteinmodif.tsv",
+             "pathway_Purine.tsv",
+             "pathway_Pyrimidine.tsv",
+             "pathway_Pyruvate.tsv",
+             "pathway_Retinol.tsv",
+             "pathway_Riboflavin.tsv",
+             "pathway_ROS.tsv",
+             "pathway_Serotonin.tsv",
+             "pathway_Sphingolipid.tsv",
+             "pathway_Starch.tsv",
+             "pathway_Steroid.tsv",
+             "pathway_Sulfur.tsv",
+             "pathway_Terpenoid.tsv",
+             "pathway_Thiamine.tsv",
+             "pathway_Transport.tsv",
+             "pathway_Triacylglycerol.tsv",
+             "pathway_Tricarboxylic.tsv",
+             "pathway_Tryptophan.tsv",
+             "pathway_Tyrosine.tsv",
+             "pathway_Ubiquinone.tsv",
+             "pathway_Urea.tsv",
+             "pathway_Valine_.tsv",
+             "pathway_Vitamin_A.tsv",
+             "pathway_Vitamin_B12.tsv",
+             "pathway_Vitamin_B2.tsv",
+             "pathway_Vitamin_C.tsv",
+             "pathway_Vitamin_D.tsv",
+             "pathway_Vitamin_E.tsv",
+             "pathway_Vitamin8B6.tsv",
+             "pathway_Xenobiotics.tsv"
+     )
+
+
+# Créer une liste pour stocker les dataframes
+liste_dataframes <- list()
+
+# Parcours de chaque chemin
+for (fichier in chemins) {
+  # Charger les données
+  data <- read_tsv(fichier)
+  genes_find <- data$Gene
+  
+  # Créer un dataframe vide pour stocker les résultats
+  df_pathway <- data.frame()
+  
+  # Parcours de chaque gène dans la liste
+  for (gene in genes_find) {
+    # Vérification si le gène est présent dans les noms de lignes des données
+    if (gene %in% rownames(df_filtered_clean)) {
+      # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+      df_pathway <- rbind(df_pathway, df_filtered_clean[gene, , drop = FALSE])
+    }
+  }
+  
+  # Ajouter le dataframe à la liste
+  liste_dataframes[[fichier]] <- df_pathway
+}
+
+# Maintenant, la liste liste_dataframes contient tous les dataframes correspondant à chaque chemin.
+
+
+
+```
+
+
+### ComplexHeatmap
+
+```{r}
+# Création des heatmaps individuelles et stockage dans une liste
+list_heatmaps <- list()
+
+for (fichier in names(liste_dataframes)) {
+  nom_heatmap <- paste("heatmap_", fichier, sep = "")
+  nom_dataframe <- paste("dataframe_", fichier, sep = "")
+  list_heatmaps[[nom_heatmap]] <- Heatmap(liste_dataframes[[fichier]], name = fichier)
+  assign(nom_dataframe, list_heatmaps[[nom_heatmap]]@matrix)
+}
+ten <- list_heatmaps[1:10]
+# Extraction des données des heatmaps individuelles
+list_data_heatmaps <- lapply(ten, function(x) x@matrix)
+
+
+
+# Combinaison des données
+combined_data <- do.call(rbind,list_data_heatmaps)
+
+# Extraire les noms des fichiers sans le préfixe "heatmap_pathway_" et sans le suffixe ".tsv"
+row_split <- rep(gsub("heatmap_pathway_", "", names(list_data_heatmaps)), sapply(list_data_heatmaps, nrow))
+row_split <- gsub("\\.tsv", "", row_split)
+
+# Création d'un nouveau objet Heatmap avec les données combinées
+new_heatmap <- Heatmap(combined_data, name = "Combined Heatmap",row_split = row_split)
+
+
+
+
+
+# Chemin complet du fichier PDF
+pdf_file <- file.path("output_directory", "heatmap_combined.pdf")
+
+# Ouvrir un fichier PDF
+pdf(pdf_file)
+
+# Dessiner le Heatmap dans le fichier PDF
+draw(new_heatmap)
+
+# Fermer le fichier PDF
+dev.off()
+
+# Dessin du nouveau heatmap
+#draw(new_heatmap)
+
+
+```
+
+
+
+
+
