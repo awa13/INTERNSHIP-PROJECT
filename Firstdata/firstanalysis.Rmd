@@ -1,0 +1,1216 @@
+---
+title: "Semaine2"
+author: "Awabousso"
+date: "2024-03-11"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## R Markdown
+
+
+### 1.Prise en main des données 
+#### Importation des données 
+```{r}
+library(readr)
+library(openxlsx)
+df  <- read_tsv("C:/Users/awabo/OneDrive/Bureau/STAGE/first/20240305_140028_410_MBJ_directDIA_test5_Report.tsv")
+### Affichage si besoin 
+View(df)
+
+#output_file1 <- "Matrice.xlsx"
+# Écrire le dataframe dans le fichier Excel
+#write.xlsx(df, file = output_file1, rowNames = TRUE)
+
+```
+
+
+#### Importation de tous les library necessaire pour la suite de mes analyses 
+
+
+```{r}
+library(FactoMineR) ## pour la PCA 
+library(gtsummary)## pour summary 
+library(mice)
+library(tidyverse)
+library(tidyr) 
+library(preprocessCore)
+library(pheatmap)
+library(bestNormalize)#library(MSnSet.utils) 
+library(circlize) # colorRamp2
+library(ComplexHeatmap) # additional modifications
+library(dplyr) # %>%
+library(ggpubr)
+library(factoextra) ## Pour le clustering
+library(openxlsx) ### pour les fichiers excel
+library(DOSE)
+library(MSnSet.utils)
+library(enrichplot)
+library(Biobase)
+library(fgsea)
+```
+
+
+
+####  Modification en données numerique des données 
+
+```{r}
+### nouvelle données 
+
+df_bis <- df 
+## Suppression  des espaces dans les colonnnes  
+names(df_bis) <- gsub(" ", "", names(df_bis))
+
+
+### remplacer les NaN par NA
+for (col in names(df_bis)[-1]) {
+  df_bis[[col]] <- gsub(",", ".", as.character(df_bis[[col]]))
+  df_bis[[col]] <- ifelse(df_bis[[col]] == "NaN", NA, df_bis[[col]])
+}
+
+
+ 
+###  Convertir toutes les colonnes en format numérique
+df_bis[] <- lapply(df_bis, as.numeric)
+
+df_bis$PG.ProteinGroups <- df$PG.ProteinGroups
+View(df_bis)
+
+```
+
+#### mettre la première colonne en nom des  ligne 
+
+```{r}
+df_bis<-as.matrix(df_bis[,-1])  #mettre la première colonne en tant que noms et non valeurs numériques
+
+str(df_bis)
+View(df_bis)
+
+rownames(df_bis)<-df$PG.ProteinGroups
+
+View(dfbis_log2)
+dim(df)
+```
+
+#### remplacer les NA par zéro
+```{r}
+
+#  Remplacer les Na par 0
+df_bis[is.na(df_bis)] <- 0
+
+
+#log2
+dfbis_log2 <- log2(df_bis)
+# Remplacer les valeurs -Inf par 0
+dfbis_log2[is.infinite(dfbis_log2) & dfbis_log2 == -Inf] <- 0
+
+```
+### 2. filtrer les données par groupes 
+Par exemple les 5 morulas dans un jeu de données  et de même pour le stade blastocyste et le J10 
+
+```{r}
+
+# Trouver les colonnes contenant le terme "EJ10"
+columns_to_keep <- grep("EJ10", colnames(df_bis), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_EJ10 <- df_bis[, columns_to_keep]
+
+# Calculer la somme des valeurs de chaque ligne
+row_sums <- rowSums(df_EJ10)
+### Trouver tous les colonnes contenant le terme "PB"
+columns_to_keep <- grep("PB", colnames(df_bis), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_PB  <- df_bis[, columns_to_keep]
+
+# Afficher les premières lignes du nouveau jeu de données filtré
+#View(df_PB)
+
+### Trouver tous les colonnes contenant le terme "PB"  et "pools"
+columns_to_keep <- grep("PM|Pool", colnames(df_bis), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_PM  <- df_bis[, columns_to_keep]
+
+# Afficher les premières lignes du nouveau jeu de données filtré
+#View(df_PM)
+
+
+
+```
+
+
+
+```{r}
+
+
+```
+
+
+
+I
+### 3. Distribution de la quantité de protéines dans chaque groupe
+#### Pour les J10 
+
+```{r}
+#### log des donnée de J10 
+
+df_EJ10_log2 <- log2(df_EJ10)
+
+# Remplacer les valeurs -Inf par 0
+df_EJ10_log2[is.infinite(df_EJ10_log2) & df_EJ10_log2 == -Inf] <- 0
+
+# Supprimer les lignes avec des zéros dans toutes les colonnes
+df_EJ10_log2bis <- df_EJ10_log2[rowSums(df_EJ10_log2 == 0) == 0,]
+dim(df_EJ10_log2bis)
+# Créer un histogramme pour visualiser la distribution
+par(mfrow = c(1, 5), bg="white")
+hist(df_EJ10_log2bis[,1],breaks="Sturges",xlab="Protein Quantity ",ylab="Frequency",main=" EJ10 colonne 1 ",col = "magenta3")
+hist(df_EJ10_log2bis[,2],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 2 ",col = "cyan2")
+hist(df_EJ10_log2bis[,3],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 3 ",col = "chartreuse2")
+hist(df_EJ10_log2bis[,4],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 4 ",col = "cyan1")
+hist(df_EJ10_log2bis[,5],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 5 ",col="violetred2")
+
+
+
+
+
+
+```
+#### Distribution pour les blastocystes 
+
+```{r}
+
+# log2 des données 
+
+df_PB_log2 <- log2(df_PB)
+
+
+# Remplacer les valeurs -Inf par 0
+df_PB_log2[is.infinite(df_PB_log2) & df_PB_log2 == -Inf] <- 0
+# Supprimer les lignes avec des zéros dans toutes les colonnes
+df_PB_log2bis <- df_PB_log2[rowSums(df_PB_log2 == 0) == 0,]
+dim(df_PB_log2)
+# Créer un histogramme pour visualiser la distribution 
+par(mfrow = c(1, 5), bg="white")
+hist(df_PB_log2bis[,1],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PB1 ",col = "magenta3")
+hist(df_PB_log2bis[,2],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PB2 ",col = "cyan2")
+hist(df_PB_log2bis[,3],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main="PB3 ",col = "chartreuse2")
+hist(df_PB_log2bis[,4],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PB4 ",col = "cyan1")
+hist(df_PB_log2bis[,5],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PB5 ",col="violetred2")
+
+
+
+
+
+
+
+```
+####  Distribution des Morula 
+```{r}
+# log2 des données 
+
+df_PM_log2 <- log2(df_PM)
+
+
+# Remplacer les valeurs -Inf par 0
+df_PM_log2[is.infinite(df_PM_log2) & df_PM_log2 == -Inf] <- 0
+#View(df_PM_log2)
+# Supprimer les lignes avec des zéros dans toutes les colonnes
+df_PM_log2bis <- df_PM_log2[rowSums(df_PM_log2 == 0) == 0,]
+dim(df_PM_log2bis)
+# Créer un histogramme pour visualiser la distribution 
+par(mfrow = c(1, 6), bg="white")
+  
+hist(df_PM_log2bis[,1],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PM2 ",col = "magenta3")
+
+hist(df_PM_log2bis[,2],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PM3 ",col = "cyan2")
+hist(df_PM_log2bis[,3],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main="PM4 ",col = "chartreuse2")
+hist(df_PM_log2bis[,4],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PM5 ",col = "cyan1")
+hist(df_PM_log2bis[,5],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PM6 ",col = "cyan4")
+hist(df_PM_log2bis[,6],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" PM7 ",col="violetred2")
+
+
+
+
+```
+
+
+
+#### Combien J'ai de proteines qui sont dans tous les échantillons  sauf 1 , ou tous les échantillons  sauf  2 ainsi de suite
+
+##### Echantillonnage de EJ10
+
+```{r}
+# Définition des colonnes pour lesquelles vous souhaitez compter les protéines présentes
+colonnes <- c(1, 2, 3, 4,5)  # On peut  ajuster les numéros de colonne selon les echantillons ( Morula , blastula et J10 )
+
+# Compter le nombre de protéines présentes dans les colonnes spécifiées
+prot_count_in_columns <- colSums(df_EJ10[, colonnes] != 0)
+
+# Afficher le nombre de protéines présentes dans chaque colonne spécifiée
+print(prot_count_in_columns)
+```
+
+
+##### Echantillonnage PB
+```{r}
+# Définition des colonnes pour lesquelles vous souhaitez compter les protéines présentes
+colonnes <- c(1, 2, 3, 4,5)  # On peut  ajuster les numéros de colonne selon les echantillons ( Morula , blastula et J10 )
+
+
+# Compter le nombre de protéines présentes dans les colonnes spécifiées
+prot_count_in_columns <- colSums(df_PB[, colonnes] != 0)
+
+# Afficher le nombre de protéines présentes dans chaque colonne spécifiée
+print(prot_count_in_columns)
+
+```
+
+
+##### Echantillonnage PM 
+```{r}
+# Définition des colonnes pour lesquelles vous souhaitez compter les protéines présentes
+colonnes <- c(1, 2, 3, 4,5,6)  # On peut  ajuster les numéros de colonne selon les echantillons ( Morula , blastula et J10 )
+
+# Compter le nombre de protéines présentes dans les colonnes spécifiées
+prot_count_in_columns <- colSums(df_PM[, colonnes] != 0)
+
+# Afficher le nombre de protéines présentes dans chaque colonne spécifiée
+print(prot_count_in_columns)
+
+```
+
+Pour chaque proteine je regarde dans combien de colonnes il est absent et je lajoute dans un fichier excel
+```{r}
+library(openxlsx)
+
+EJ10 <- df_EJ10_log2
+
+PB <- df_PB_log2
+PM <- df_PM_log2
+
+View(PB)
+
+
+# Créer un dataframe contenant les résultats
+result_df <- data.frame(EJ10 = rowSums(EJ10 != 0))
+
+result_df$PB <- rowSums(PB != 0)
+result_df$PM <- rowSums(PM != 0)
+# Spécifier le nom du fichier Excel de sortie
+output_file <- "resultats.xlsx"
+
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(result_df, file = output_file, rowNames = TRUE)
+View(df_bis)
+
+
+```
+
+
+####Pour nos groupes d'échantillons on regarde il y a combien de proteines qui sont présentes 0/5 ainsi de suite 
+##### Pour PB
+```{r}
+# Créer une copie du dataframe avec des valeurs binaires (1 si la valeur est différente de zéro, sinon 0)
+df_binary <- df_PB_log2 != 0
+
+# Calculer le nombre de colonnes
+num_columns <- ncol(df_binary)
+
+# Calculer la somme des valeurs binaires pour chaque ligne
+presence_counts <- rowSums(df_binary)
+
+
+# Compter le nombre de protéines présentes dans chaque combinaison de colonnes
+counts <- table(presence_counts)
+
+# Afficher le résultat
+print(counts)
+```
+
+
+##### Pour EJ10
+```{r}
+# Créer une copie du dataframe avec des valeurs binaires (1 si la valeur est différente de zéro, sinon 0)
+df_binary <- df_EJ10_log2 != 0
+
+# Calculer le nombre de colonnes
+num_columns <- ncol(df_binary)
+
+# Calculer la somme des valeurs binaires pour chaque ligne
+presence_counts <- rowSums(df_binary)
+
+
+# Compter le nombre de protéines présentes dans chaque combinaison de colonnes
+counts <- table(presence_counts)
+
+# Afficher le résultat
+print(counts)
+```
+
+##### Pour PM 
+
+```{r}
+# Créer une copie du dataframe avec des valeurs binaires (1 si la valeur est différente de zéro, sinon 0)
+df_binary <- df_PM_log2 != 0
+
+# Calculer le nombre de colonnes
+num_columns <- ncol(df_binary)
+num_columns
+
+# Calculer la somme des valeurs binaires pour chaque ligne
+presence_counts <- rowSums(df_binary)
+
+
+# Compter le nombre de protéines présentes dans chaque combinaison de colonnes
+counts <- table(presence_counts)
+
+# Afficher le résultat
+print(counts)
+```
+
+
+
+
+### 4. Les Protéines qui match entre deux échantillons 
+
+#### Protéines matches entre EJ10 et PB 
+Les données utilisées sont les données filtrées ( enléver les lignes avec des zero dans tous les colonnes )
+```{r}
+# Calculer le nombre de valeurs n dans les cinq premières colonnes pour chaque ligne
+a<-rowSums(df_EJ10[,1:5])
+### Filtrer le dataframe pour ne conserver que les lignes avec au moins une valeur non nulle dans les cinq premières colonnes
+EJ10filtered <- subset(df_EJ10, a > 0)
+# Calculer le nombre de valeurs n dans les cinq premières colonnes pour chaque ligne
+a<-rowSums(df_PB[,1:5])
+### Filtrer le dataframe pour ne conserver que les lignes avec au moins une valeur non nulle dans les cinq premières colonnes
+PBfiltered <- subset(df_PB, a > 0)
+# Calculer le nombre de valeurs n dans les cinq premières colonnes pour chaque ligne
+a<-rowSums(df_PM[,1:6])
+### Filtrer le dataframe pour ne conserver que les lignes avec au moins une valeur non nulle dans les cinq premières colonnes
+PMfiltered <- subset(df_PM, a > 0)
+
+
+
+# Extraire les noms des protéines de chaque dataframe
+proteins_df_EJ10 <- rownames(EJ10filtered)
+proteins_df_PB <- rownames(PBfiltered)
+
+View(EJ10filtered)
+# Trouver les protéines qui correspondent entre les deux dataframes
+matching_proteins <- intersect(proteins_df_EJ10, proteins_df_PB)
+
+#print(matching_proteins)
+
+# Compter le nombre de protéines correspondantes
+nombre_proteines_correspondantes <- length(matching_proteins)
+
+# Afficher le nombre de protéines correspondantes
+print(nombre_proteines_correspondantes)
+
+# Trouver les protéines présentes dans df_EJ10 mais absentes dans df_PB
+
+proteins_only_in_EJ10 <- setdiff( proteins_df_EJ10,proteins_df_PB)
+# Trouver les protéines présentes dans  df_PB mais absentes dans df_EJ10
+proteins_only_in_PB<- setdiff(proteins_df_PB,proteins_df_EJ10)
+
+
+
+#Compter le nombre de protéines présentes uniquement dans df_PB
+print(length(proteins_only_in_EJ10))
+#Compter le nombre de protéines présentes uniquement dans df_PM
+print(length(proteins_only_in_PB))
+
+# Calculer la moyenne des protéines uniques dans chaque échantillon
+mean_EJ10 <- rowMeans(EJ10filtered[proteins_only_in_EJ10, ])
+mean_EJ10 <- round(log2(mean_EJ10),2)
+mean_EJ10 <- mean_EJ10[order(mean_EJ10,decreasing=FALSE)]
+mean_PB <- rowMeans(PBfiltered[proteins_only_in_PB, ])
+View(mean_PB)
+mean_PB <- round(log2(mean_PB),2)
+mean_PB <- mean_PB[order(mean_PB,decreasing=FALSE)]
+
+# Créer un dataframe contenant les moyennes
+mean_df <- data.frame(Mean_EJ10 = mean_EJ10)
+
+# Créer un dataframe contenant les moyennes
+mean_df2 <- data.frame(mean_PB = mean_PB)
+# Spécifier le nom du fichier Excel de sortie
+output_file <- "PBvsEJ10_EJ10uniquemeans .xlsx"
+
+# Spécifier le nom du fichier Excel de sortie
+output_file1 <- "PBvsEJ10_PBuniquemeans .xlsx"
+
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(mean_df, file = output_file, rowNames = TRUE)
+
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(mean_df2, file = output_file1, rowNames = TRUE)
+
+
+
+
+
+
+```
+
+#### Protéines matches entre EJ10 et PM
+
+
+```{r}
+# Extraire les noms des protéines de chaque dataframe
+proteins_df_EJ10 <- rownames(EJ10filtered)
+proteins_df_PM <- rownames(PMfiltered)
+
+
+# Trouver les protéines qui correspondent entre les deux dataframes
+matching_proteins <- intersect(proteins_df_EJ10, proteins_df_PM)
+
+#print(matching_proteins)
+
+# Compter le nombre de protéines correspondantes
+nombre_proteines_correspondantes <- length(matching_proteins)
+
+# Afficher le nombre de protéines correspondantes
+print(nombre_proteines_correspondantes)
+
+
+proteins_only_in_EJ10 <- setdiff( proteins_df_EJ10,proteins_df_PM)
+
+proteins_only_in_PM<- setdiff(proteins_df_PM,proteins_df_EJ10)
+
+#Compter le nombre de protéines présentes uniquement dans df_PB
+print(length(proteins_only_in_EJ10))
+#Compter le nombre de protéines présentes uniquement dans df_PM
+print(length(proteins_only_in_PM))
+
+
+# Calculer la moyenne des protéines uniques dans chaque échantillon
+mean_EJ10 <- rowMeans(EJ10filtered[proteins_only_in_EJ10, ])
+mean_EJ10 <- round(log2(mean_EJ10),2)
+mean_EJ10 <- mean_EJ10[order(mean_EJ10,decreasing=FALSE)]
+View(mean_EJ10)
+
+# Créer un dataframe contenant les moyennes
+mean_df <- data.frame(Mean_EJ10 = mean_EJ10)
+
+# Spécifier le nom du fichier Excel de sortie
+output_file <- "PMvsEJ10_EJ10uniquemeans .xlsx"
+
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(mean_df, file = output_file, rowNames = TRUE)
+
+
+# Calculer la moyenne des protéines uniques dans chaque échantillon
+mean_PM <- rowMeans(PMfiltered[proteins_only_in_PM, ])
+View(mean_PM)
+mean_PM <- round(log2(mean_PM),2)
+mean_PM <- mean_PM[order(mean_PM,decreasing=FALSE)]
+# Créer un dataframe contenant les moyennes
+mean_df2 <- data.frame(Mean_PM = mean_PM)
+# Spécifier le nom du fichier Excel de sortie
+output_file1 <- "PMvsEJ10_PMuniquemeans .xlsx"
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(mean_df2, file = output_file1, rowNames = TRUE)
+
+
+
+
+```
+
+#### Protéines matches entre PB et PM
+
+```{r}
+# Extraire les noms des protéines de chaque dataframe
+#proteins_df_PM
+
+#proteins_df_PB
+# Trouver les protéines qui correspondent entre les deux dataframes
+matching_proteins <- intersect(proteins_df_PM, proteins_df_PB) 
+
+
+proteins_only_in_PB <- setdiff( proteins_df_PB,proteins_df_PM)
+
+proteins_only_in_PM <- setdiff(proteins_df_PM, proteins_df_PB)
+# Compter le nombre de protéines correspondantes
+nombre_proteines_correspondantes <- length(matching_proteins)
+
+# Afficher le nombre de protéines correspondantes
+print(nombre_proteines_correspondantes)
+#Compter le nombre de protéines présentes uniquement dans df_PB
+print(length(proteins_only_in_PB))
+#Compter le nombre de protéines présentes uniquement dans df_PM
+print(length(proteins_only_in_PM))
+
+
+
+
+# Calculer la moyenne des protéines uniques dans chaque échantillon
+mean_PB <- rowMeans(PBfiltered[proteins_only_in_PB, ])
+mean_PB <- round(log2(mean_PB),2)
+mean_PB <- mean_PB[order(mean_PB,decreasing=FALSE)]
+View(mean_PB)
+
+# Créer un dataframe contenant les moyennes
+mean_df <- data.frame(Mean_PB = mean_PB)
+
+# Spécifier le nom du fichier Excel de sortie
+output_file <- "PMvsPB_PBuniquemeans .xlsx"
+
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(mean_df, file = output_file, rowNames = TRUE)
+
+
+# Calculer la moyenne des protéines uniques dans chaque échantillon
+mean_PM <- rowMeans(PMfiltered[proteins_only_in_PM, ])
+View(mean_PM)
+mean_PM <- round(log2(mean_PM),2)
+mean_PM <- mean_PM[order(mean_PM,decreasing=FALSE)]
+# Créer un dataframe contenant les moyennes
+mean_df2 <- data.frame(Mean_PM = mean_PM)
+# Spécifier le nom du fichier Excel de sortie
+output_file1 <- "PMvsPB_PMuniquemeans .xlsx"
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(mean_df2, file = output_file1, rowNames = TRUE)
+```
+
+### 4. Analyse differentielle 
+#### 1. PCA 
+
+je crée une table de notation pour la suite de mes analyses sur les données 
+
+```{r}
+samples <- c("[1]410_EJ10-test2_OT_Slot2-2_1_6949.d.PG.Quantity" , "[2]410_EJ10-test2_Slot2-2_1_6947.d.PG.Quantity", 
+ "[3]410_EJ10-test2_TClow_Slot2-3_1_6951.d.PG.Quantity" , "[4]410_EJ10-test5_TClow_Slot2-1_1_6953.d.PG.Quantity","[5]410_EJ10-test_Slot2-1_1_6944.d.PG.Quantity" ,"[6]404_PB1_Slot1-22_1_5701.d.PG.Quantity","[7]404_PB2_Slot1-16_1_5695.d.PG.Quantity" ,"[8]404_PB3_Slot1-14_1_5693.d.PG.Quantity","[9]404_PB4_Slot1-20_1_5699.d.PG.Quantity" ,"[10]404_PB5_Slot1-18_1_5697.d.PG.Quantity","[11]404_PM2_Slot1-15_1_5694.d.PG.Quantity" ,"[12]404_PM3_Slot1-17_1_5696.d.PG.Quantity"           
+,"[13]404_PM4_Slot1-19_1_5698.d.PG.Quantity"           
+, "[14]404_PM5_Slot1-21_1_5700.d.PG.Quantity"           
+, "[15]404_PM6_Slot1-23_1_5702.d.PG.Quantity"           
+,"[16]404_Poolx5MC_Slot1-33_1_5531.d.PG.Quantity" )
+stades <- c("EJ10", "EJ10","EJ10","EJ10","EJ10","PB", "PB","PB","PB","PB","PM", "PM","PM","PM","PM","PM")
+
+# Combinaison des deux vecteurs pour former une matrice avec deux colonnes
+tblnot <- cbind(samples, stades)
+
+# Spécifier le nom de votre fichier de sortie
+output_file <- "tblnot.tsv"
+
+# Écrire la matrice dans un fichier TSV
+write.table(tblnot, file = output_file, sep = "\t", quote = FALSE, row.names = FALSE)
+
+```
+
+```{r}
+library(FactoMineR)
+library(RColorBrewer)
+### pca resultat
+#dfbis_log2
+pca.res <- PCA(t(dfbis_log2),scale.unit = TRUE, ncp = 5, graph = FALSE)
+# Total contribution on PC1 and PC2
+
+
+my_colors <- c("EJ10" = "#5e17eb", "PB" = "#43e5cd", "PM" = "#cb01cb")
+
+# Utiliser la palette de couleurs personnalisée dans le plot PCA
+fviz_pca_ind(pca.res, geom = "point",
+             col.ind = tblnot[, 2], 
+             palette = my_colors, repel = TRUE,addEllipses = FALSE, subtitle = "Proteomics data set", legend.title = "Stades",title = "Principal Component Analysis",col.ind.sup = "blue"
+             )
+
+
+
+
+```
+
+#### 2. heatmap
+
+
+```{r}
+library(ComplexHeatmap)
+### complexheatmap 
+Heatmap(dfbis_log2)
+
+### normal heatmap
+col<- colorRampPalette(c("red", "white", "blue"))(256)
+heatmap(dfbis_log2,scale='row',col=col )
+
+
+```
+
+
+
+
+####limma 
+
+##### Test statistique pour une certaine proteine dans un certaine groupe (EJ10 ,PB,PM) 
+```{r}
+# Assurez-vous que la bibliothèque limma est installée et chargée
+#install.packages("limma")
+library(limma)
+test <- round(dfbis_log2,2)
+test[!is.finite(test)] <- 0
+
+# Appliquez lmFit pour ajuster le modèle linéaire
+fit <- lmFit(test, design)
+fit<-eBayes(fit)
+# Créez votre design matrix
+design <- model.matrix(~ 0 + factor(tblnot[,2]),data=as.data.frame(test))
+colnames(design) <- c ("EJ10","PB","PM")
+contrasts <- makeContrasts(
+  levels = colnames(design),
+  EJ10_vs_PB = EJ10- PB
+)
+View(contrasts)
+# Test de contraste
+fit_contrast <- contrasts.fit(fit, contrasts)
+fit_contrast <- eBayes(fit_contrast)
+summary(fit_contrast)
+
+
+# Correction de la p-value
+results <- decideTests(fit_contrast, method = 'global', p.value = 0.05, adjust.method = "fdr")
+
+# Identification des protéines différentiellement exprimées
+top_proteins <- topTable(fit_contrast, coef = "EJ10_vs_PB", adjust = "fdr", number = Inf)
+
+# Afficher les résultats
+#top_proteins
+# Obtenez les résidus
+residuals <- residuals(fit,test)
+
+# Calculez les écarts-types des coefficients
+coef_stdev <-fit$sigma
+# Calculez les statistiques de test (t-statistics)
+test_statistics <- coef(fit) / coef_stdev
+
+# Déterminez les résultats des tests en fonction des seuils de significativité souhaités
+threshold <- 1.96 # Pour un seuil de 5% (2-tailed) en utilisant la distribution normale standard
+test_results <- abs(test_statistics) > threshold
+
+# Afficher les résultats des tests
+#View(test_results)
+result_df <-  data.frame(EJ10 = test_results[,1])
+                   
+result_df$PB <- test_results[, "PB"]
+result_df$PM <- test_results[, "PM"]
+# Définir le nom du fichier Excel de sortie
+output_file <- "test_results.xlsx"
+
+# Écrire les résultats dans le fichier Excel
+write.xlsx(result_df, file = output_file, rowNames = TRUE)
+
+
+```
+
+
+##### visualisation des resultat volcano plot  et MAplot  avec EJ10 vs PB
+```{r}
+#if (!require("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
+
+#BiocManager::install("Glimma")
+library(Glimma)
+# Créez votre design matrix
+design <- model.matrix(~ 0 + factor(tblnot[,2]),data=as.data.frame(dfbis_log2))
+colnames(design) <- c ("EJ10","PB","PM")
+contrasts <- makeContrasts(
+  levels = colnames(design),
+  EJ10_vs_PB = EJ10- PB
+)
+
+# Test de contraste
+fit_contrast1 <- contrasts.fit(fit, contrasts)
+fit_contrast1 <- eBayes(fit_contrast1)
+
+glimmaMA(fit_contrast1,status.cols=c("#43e5cd", "grey", "#5e17eb"))
+
+
+#volcanoplot(fit_contrast1,coef=1,names= "EJ10_vs_PB")
+```
+
+```{r}
+glimmaVolcano(fit_contrast1,status.cols=c("#43e5cd", "grey", "#5e17eb"))
+```
+
+
+##### visualisation des resultat volcano plot  avec PM vs PB
+```{r}
+# Créez votre design matrix
+design <- model.matrix(~ 0 + factor(tblnot[,2]),data=as.data.frame(test))
+colnames(design) <- c ("EJ10","PB","PM")
+contrasts <- makeContrasts(
+  levels = colnames(design),
+  PM_vs_PB = PM- PB
+)
+View(contrasts)
+# Test de contraste
+fit_contrast2 <- contrasts.fit(fit, contrasts)
+fit_contrast2 <- eBayes(fit_contrast2)
+
+
+glimmaMA(fit_contrast2,status.cols=c("#43e5cd", "grey", "#cb01cb"))
+
+
+```
+```{r}
+print(glimmaVolcano(fit_contrast2,,status.cols=c("#43e5cd", "grey", "#cb01cb")
+                    ))
+```
+#### Identification des Proteines differentiellement exprimés 
+On utilise la méthodes False Discovery Rate FDR pout effectuer plusieurs test de correction et fixerons le seuil de signification à 0.01.Cela signifie que seuls les gènes avec des valeurs p ajustées par le FDR < 0,05 ET un changement absolu du facteur log2 de 1 ou plus seront considérés comme **exprimés de manière significativement différentielle** .
+
+```{r}
+results <- decideTests(fit_contrast1, method = 'global',
+                       p.value = 0.01,
+                       adjust.method = "fdr") 
+summary(results)
+
+
+results1 <- decideTests(fit_contrast2, method = 'global',
+                       p.value = 0.01,
+                       adjust.method = "fdr") 
+summary(results1)
+
+
+```
+
+
+#### **Protéines to gene names** 
+
+```{r}
+prot <- c(rownames(df_bis))
+head(prot)
+# Chargement du package
+library(biomaRt)
+#source("https://raw.githubusercontent.com/hmbotelho/convert_gene_compound_IDs/master/initialize.R")
+#a <-uniprot_to_genesymbol(prot)
+
+```
+
+
+#### **Décontamination** 
+
+```{r}
+# Créer une expression régulière pour les noms à supprimer
+patterns <- c("^ENS", "^H-INV", "^REFSEQ")
+
+# Créer un vecteur de booléens indiquant quelles lignes correspondent à ces motifs
+rows_to_remove <- grepl(paste(patterns, collapse = "|"), rownames(dfbis_log2))
+
+# Supprimer les lignes correspondantes
+df_filtered <- dfbis_log2[!rows_to_remove, ]
+View(df_filtered)
+dim(df_filtered)
+
+```
+
+
+####  je supprime les  Proteines groupes qui diffèrent de 1 ou 2 acides aminés, on a pas pu identifier le peptides qui entre les protéines.
+je vais les enléver 
+
+```{r}
+
+
+# Identifier les lignes à supprimer
+rows_to_remove <- grepl("^[A-Z0-9]+(;[A-Z0-9]+)+$", rownames(df_filtered))
+
+# Filtrer le dataframe
+df_special <- df_filtered[rows_to_remove, ]
+head(df_special)
+df_filtered <- df_filtered[!rows_to_remove, ]
+dim(df_filtered)
+
+
+# Identifier les lignes contenant le motif spécifié
+rows_to_remove <- grepl("^[A-Z0-9]+;[A-Z0-9]+-[0-9]$", rownames(df_filtered))
+
+# Supprimer les lignes correspondantes
+df_filtered <- df_filtered[!rows_to_remove, , drop = FALSE]
+
+dim(df_filtered)  # Vérifiez les dimensions après avoir supprimé les lignes
+
+View(df_filtered)
+
+# Calculer la somme des valeurs de chaque ligne
+row_sums <- rowSums(df_filtered)
+
+# Identifier les lignes avec une somme égale à zéro
+rows_to_remove <- row_sums == 0
+
+# Supprimer les lignes avec une somme égale à zéro
+df_filtered <- df_filtered[!rows_to_remove, ]
+dim(df_filtered)
+
+df_filtered <- df_filtered[!(rownames(df_filtered) %in% c("A2AB72", "Q1RMK2")), ]
+dim(df_filtered)
+
+#ss <- data.frame(ss = df_filtered)
+#output_file1 <- "rchr.xlsx"
+#ss <- round(ss,2)
+# Écrire le dataframe dans le fichier Excel
+#write.xlsx(ss, file = output_file1, rowNames = TRUE)
+```
+
+
+
+
+## **Analyse sur les données filtrées**
+
+```{r}
+Heatmap(df_filtered)
+```
+
+
+
+```{r}
+ # Trouver les colonnes contenant le terme "EJ10"
+columns_to_keep <- grep("EJ10", colnames(df_filtered), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_EJ10f <- df_filtered[, columns_to_keep]
+
+### Trouver tous les colonnes contenant le terme "PB"
+columns_to_keep <- grep("PB", colnames(df_filtered), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_PBf  <- df_filtered[, columns_to_keep]
+
+### Trouver tous les colonnes contenant le terme "PB"  et "pools"
+columns_to_keep <- grep("PM|Pool", colnames(df_filtered), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_PMf  <- df_filtered[, columns_to_keep]
+```
+
+
+
+```{r}
+#### log des donnée de J10 
+
+df_EJ10f_log2 <- (df_EJ10f)
+
+# Remplacer les valeurs -Inf par 0
+df_EJ10f_log2[is.infinite(df_EJ10f_log2) & df_EJ10f_log2 == -Inf] <- 0
+
+# Supprimer les lignes avec des zéros dans toutes les colonnes
+df_EJ10f_log2bis <- df_EJ10f_log2[rowSums(df_EJ10f_log2 == 0) == 0,]
+dim(df_EJ10_log2bis)
+# Créer un histogramme pour visualiser la distribution
+par(mfrow = c(1, 5), bg="white")
+hist(df_EJ10f_log2bis[,1],breaks="Sturges",xlab="Protein Quantity ",ylab="Frequency",main=" EJ10 colonne 1 ",col = "magenta3")
+hist(df_EJ10f_log2bis[,2],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 2 ",col = "cyan2")
+hist(df_EJ10f_log2bis[,3],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 3 ",col = "chartreuse2")
+hist(df_EJ10f_log2bis[,4],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 4 ",col = "cyan1")
+hist(df_EJ10f_log2bis[,5],breaks="Sturges",xlab="Protein Quantity",ylab="Frequency",main=" EJ10 colonne 5 ",col="violetred2")
+
+```
+
+
+```{r}
+Heatmap(df_EJ10f)
+```
+
+
+
+```{r}
+fit <- lmFit(df_filtered, design)
+fit<-eBayes(fit)
+
+design <- model.matrix(~ 0 + factor(tblnot[,2]),data=as.data.frame(df_filtered))
+colnames(design) <- c ("EJ10","PB","PM")
+contrasts <- makeContrasts(
+  levels = colnames(design),
+  EJ10_vs_PB = EJ10- PB
+)
+
+# Test de contraste
+fit_contrast1f <- contrasts.fit(fit, contrasts)
+fit_contrast1f <- eBayes(fit_contrast1f)
+
+
+
+glimmaMA(fit_contrast1f,status.cols=c("#43e5cd", "grey", "#5e17eb"))
+
+
+```
+
+
+#### **Protein to gene name**
+```{r}
+
+
+prot <- c(rownames(df_filtered))
+View(prot)
+# Chargement du package
+library(biomaRt)
+source("https://raw.githubusercontent.com/hmbotelho/convert_gene_compound_IDs/master/initialize.R")
+gene <-uniprot_to_genesymbol(prot)
+gene<- data.frame(gene = gene)
+View(gene)
+
+gene <- gene$gene
+gene <- na.omit(gene_list)
+
+# Installer le package si ce n'est pas déjà fait
+#if (!require("BiocManager", quietly = TRUE))
+   # install.packages("BiocManager")
+
+#BiocManager::install("clusterProfiler")
+
+# Charger le package
+library(clusterProfiler)
+
+#if (!require("BiocManager", quietly = TRUE))
+    #install.packages("BiocManager")
+
+#BiocManager::install("org.Mm.eg.db")
+library(org.Hs.eg.db)
+
+library(org.Mm.eg.db)
+
+go_result <- enrichGO(gene = gene_list, 
+                      OrgDb = org.Hs.eg.db,  # Base de données pour l'organisme d'intérêt, ici Homo sapiens
+                      keyType = "SYMBOL",    # Type d'identifiant utilisé dans gene_list
+                      ont = "BP",            # Aspect biologique de GO, BP pour Biological Process, MF pour Molecular Function, CC pour Cellular Component
+                      pAdjustMethod = "fdr", # Méthode d'ajustement pour les p-values
+                      pvalueCutoff = 0.05)   # Seuil de p-value
+
+# Afficher les résultats
+head(go_result)
+
+
+
+
+
+
+goplot(go_result)
+
+dotplot(go_result)
+cnetplot(go_result)
+cnetplot(go_result, circular = TRUE, colorEdge = TRUE, foldChange=gene_list)
+
+```
+```{r}
+
+upsetplot(go_result)
+
+#bp2 <- simplify(go_result, cutoff=0.7, by="p.adjust", select_fun=min)
+
+```
+
+```{r}
+library(fgsea)
+
+library(GOplot)
+#https://www.biostars.org/p/467197/ tutorial
+#plotEnrichment(g ,g$N)
+```
+
+
+```{r}
+#if (!requireNamespace("BiocManager", quietly = TRUE))
+    #install.packages("BiocManager")
+#BiocManager::install("Biobase")
+#install.packages(c("GSA","bitops","Cairo"), repos = "https://cran.rstudio.com")
+```
+
+
+
+### suppression des Proteines non humaine 
+
+```{r}
+# Charger la bibliothèque readxl
+library(readxl)
+
+# Chemin vers le fichier Excel sur votre ordinateur
+chemin <- "D:/stageAwa/first/unip.xlsx"
+
+# Lire le fichier Excel
+donnees <- read_excel(chemin)
+dim(donnees)
+
+#  Afficher les premières lignes du fichier pour vérifier l'importation
+View(donnees)
+
+
+donnes <- as.matrix(donnees)
+View(donnees)
+
+```
+
+
+
+donnees <- subset(donnees, donnees$Organism == "Homo sapiens (Human)")
+
+```{r}
+# Copier df_filtered dans df_filtered_copy
+df_filtered_copy <- df_filtered
+
+#df_filtered_with_gene <- cbind(df_filtered_copy, Gene_Names = donnees$`Gene Names`)
+#df_filtered_with_gene[] <- lapply(df_filtered_with_gene, as.numeric)
+#df_filtered_with_g_O <- cbind(df_filtered_with_gene, Organism = donnees$Organism)
+
+row.names(df_filtered_copy) <- donnees$E
+
+
+df_filtered_human <- subset(df_filtered_copy, row.names(df_filtered_copy) == "Homo sapiens (Human)")
+dim(df_filtered_human)
+
+
+donnees <- subset(donnees,donnees$E == "Homo sapiens (Human)")
+dim(donnees)
+
+#df_filtered_human<-as.matrix(df_filtered_human[,-18])  #mettre la première colonne en tant que noms et non valeurs numériques
+
+rownames(df_filtered_human)<- donnees$D
+
+View(df_filtered_human)
+
+aa <- data.frame(aa = df_filtered_human)
+output_file1 <- "doul.xlsx"
+
+aa
+# Écrire le dataframe dans le fichier Excel
+write.xlsx(aa, file = output_file1, rowNames = TRUE)
+
+which(is.na(row.names(df_filtered_human)))
+rownames(df_filtered_human)[2663] <- "Q709F0"
+which(is.na(row.names(df_filtered_human)))
+#(df_filtered_copy)[2665]
+#View(dfbis_log2)
+```
+
+
+
+#### Nouvelle Analyses 
+Subset df_filtered_human 
+
+
+```{r}
+ # Trouver les colonnes contenant le terme "EJ10"
+columns_to_keep <- grep("EJ10", colnames(df_filtered_human), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_EJ10f <- df_filtered_human[, columns_to_keep]
+
+### Trouver tous les colonnes contenant le terme "PB"
+columns_to_keep <- grep("PB", colnames(df_filtered_human), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_PBf  <- df_filtered_human[, columns_to_keep]
+
+### Trouver tous les colonnes contenant le terme "PB"  et "pools"
+columns_to_keep <- grep("PM|Pool", colnames(df_filtered_human), value = TRUE)
+
+# Sélectionner les colonnes correspondantes dans votre jeu de données
+df_PMf  <- df_filtered_human[, columns_to_keep]
+```
+
+
+
+
+```{r}
+
+
+# Créez votre design matrix
+
+design <- model.matrix(~ 0 + factor(tblnot[,2]),data=as.data.frame(df_filtered_human))
+colnames(design) <- c ("EJ10","PB","PM")
+contrasts <- makeContrasts(
+  levels = colnames(design),
+  EJ10_vs_PB = EJ10- PB
+)
+
+
+fit <- lmFit(df_filtered_human, design)
+fit<-eBayes(fit)
+
+# Test de contraste
+fit_contrast1f <- contrasts.fit(fit, contrasts)
+fit_contrast1f <- eBayes(fit_contrast1f)
+
+glimmaMA(fit_contrast1f,status.cols=c("#43e5cd", "grey", "#5e17eb"))
+```
+
+#### GO terms analysis 
+
+
+```{r}
+library(topGO)
+if (!requireNamespace("BiocManager",quietly=TRUE))  
+  install.packages("BiocManager")
+BiocManager::install()
+
+gene_list <- rownames(df_filtered_human)
+go_r <- enrichGO(gene = gene_list, 
+                      OrgDb = org.Hs.eg.db,  # Base de données pour l'organisme d'intérêt, ici Homo sapiens
+                      ont = "CC",            # Aspect biologique de GO, BP pour Biological Process, MF pour Molecular Function, CC pour Cellular Component
+                 keyType = "SYMBOL",
+                      pAdjustMethod = "fdr", # Méthode d'ajustement pour les p-values
+                      pvalueCutoff = 0.05)  
+ggo <- go_r
+head(ggo)
+goplot(ggo)
+
+dotplot(ggo) 
+cnetplot(ggo)
+#cnetplot(ggo, circular = TRUE, colorEdge = TRUE, foldChange=gene_list)
+
+```
+```{r}
+
+barplot(ggo)
+```
+
+```{r}
+mutate(ggo, qscore = -log(p.adjust, base=10)) %>% 
+    barplot(x="qscore")
+```
+
+
+```{r}
+edox <- setReadable(ggo, 'org.Hs.eg.db', 'ENTREZID')
+p1 <- cnetplot(edox, node_label="category", 
+        cex_label_category = 1.2) 
+p1
+p2 <- cnetplot(edox, node_label="gene", 
+        cex_label_gene = 0.8) 
+p2
+
+p4 <- cnetplot(edox, node_label="none", 
+        color_category='firebrick', 
+        color_gene='steelblue')
+p4
+
+```
+```{r}
+
+```
+
+```{r}
+install.packages("shiny")
+library(shiny)
+runExample("01_hello")
+install.packages("anyLib")
+anyLib::anyLib(c("shiny", "shinydashboard", "shinyWidgets", "DT", "plotly", "ggplot2", "googleVis", "colourpicker"))
+library(shinydashboard)
+ 
+ui <- dashboardPage(
+  dashboardHeader(),
+  dashboardSidebar(),
+  dashboardBody()
+)
+ 
+server <- function(input, output) { }
+ 
+shinyApp(ui, server)
+runApp()
+```
+
