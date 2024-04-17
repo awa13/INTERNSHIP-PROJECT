@@ -540,6 +540,7 @@ library(RColorBrewer)
 ### pca resultat
 #dfbis_log2
 pca.res <- PCA(t(df_filtered_human),scale.unit = TRUE, ncp = 5, graph = FALSE)
+
 # Total contribution on PC1 and PC2
 
 
@@ -782,7 +783,7 @@ for (gene in genes_to_search) {
 }
 
 # Afficher le nouveau dataframe contenant les gènes trouvés dans les données
-"View(dataframe_krebs)
+#View(dataframe_krebs)
 
 
 
@@ -905,12 +906,12 @@ for (gene in genes_find) {
 ```{r}
 
 #  Importer le fichier avec tout les gènes Ribosomales  
-chemin <- "E:/stageAwa/first/firstdata/phosphorylation.csv"
+chemin <- "E:/stageAwa/first/firstdata/liste_gene_mitochondrie/genes_order.tsv"
 # Lire le fichier 
-phospho <- read_csv(chemin)
+phospho <- read_tsv(chemin)
 
 # Stockage
-genes_find <- phospho$geneProduct
+genes_find <- phospho$genes
 
 dataframe_phospho <- data.frame()
 # Parcours de chaque gène dans la liste
@@ -923,8 +924,99 @@ for (gene in genes_find) {
 }
 # Affichage 
 #View(dataframe_phospho)
+# Heatmap 
+heatmap <- Heatmap(dataframe_phospho, name = " Phosphorylation oxidative
+")
+heatmap
 
 
+# Importer gene order pour faire les complexes
+#  Importer le fichier avec tout les gènes Ribosomales  
+chemin <- "E:/stageAwa/first/firstdata/liste_gene_mitochondrie/genes_order.tsv"
+# Lire le fichier 
+gene_order <- read_tsv(chemin)
+View(gene_order)
+
+# Séparer les données en groupes en fonction de la colonne "modules"
+module_groups <- split(gene_order$genes, gene_order$modules)
+
+# Afficher les premiers éléments de chaque groupe
+complex1 <- module_groups$`Complex 1`
+complex2 <- module_groups$`Complex 2`
+complex3 <- module_groups$`Complex 3`
+complex4 <- module_groups$`Complex 4`
+complex5 <- module_groups$`Complex 5`
+## creation des dataframe 
+
+df_complex1 <-data.frame()
+df_complex2 <-data.frame()
+df_complex3 <-data.frame()
+df_complex4 <-data.frame()
+df_complex5 <-data.frame()
+# Parcours de chaque gène dans la liste
+## Complex1
+for (gene in complex1) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+   df_complex1 <- rbind(df_complex1, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+## Complex2
+for (gene in complex2) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+   df_complex2 <- rbind(df_complex2, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+
+## complex3
+for (gene in complex3) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+   df_complex3 <- rbind(df_complex3, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+## Complex4
+for (gene in complex4) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+   df_complex4 <- rbind(df_complex4, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+## Complex5
+for (gene in complex5) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+   df_complex5 <- rbind(df_complex5, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+
+### complexHeatmap 
+
+heatmap1 <- Heatmap(df_complex1, name = "complex1")
+heatmap2 <- Heatmap(df_complex2, name = "complex2")
+heatmap3 <- Heatmap(df_complex3, name = "complex3")
+heatmap4 <- Heatmap(df_complex4, name = "complex4")
+heatmap5 <- Heatmap(df_complex5, name = "complex5")
+
+data_heatmap1 <- (heatmap1@matrix)
+data_heatmap2 <- (heatmap2@matrix)
+data_heatmap3 <- (heatmap3@matrix)
+data_heatmap4 <- (heatmap4@matrix)
+data_heatmap5 <- (heatmap5@matrix)
+
+# Combinaison des données
+combined_data <- rbind(data_heatmap1,data_heatmap2,data_heatmap3,data_heatmap4,data_heatmap5)
+
+
+new_heatmap <- Heatmap(combined_data, name = "Combined Heatmap",show_heatmap_legend = T,column_names_centered = TRUE,column_title = 'Samples',
+        row_split = rep(c("complex1", "complex2", "complex3","complex4","complex5"), c(nrow(data_heatmap1),nrow(data_heatmap2), nrow(data_heatmap3),nrow(data_heatmap4),nrow(data_heatmap5))), cluster_columns = color_branches(col_dend, k = 3),row_names_gp = gpar(fontsize = 4) )
+draw(new_heatmap)
 ```
 
 ### Mitochondrial complex III assembly
@@ -980,30 +1072,31 @@ View(dataframe_Glycolandgluco)
 
 ```
 
-### DNA Methylation 
-voie trouve dans The Human Protein Atlas 
-
+###  Pre-implantation embryo (WP3527)
+Les proteines de la voie Pre-implantation embryo
 ```{r}
-#  Importer le fichier avec tout les gènes Ribosomales  
-chemin <- "E:/stageAwa/first/firstdata/DNA_methylation.tsv"
+#  Importer le fichier avec tout les gènes Pre-implantation embryo  
+chemin <- "E:/stageAwa/first/firstdata/pre_impl_embryo.csv"
 # Lire le fichier 
-DNA_methylation <- read_tsv(chemin)
-gene_find <- DNA_methylation$Gene
+pre_im <- read_csv(chemin)
+
+gene_find <- pre_im$geneProduct
 
 # Création d'un nouveau dataframe vide
-dataframe_methylation <- data.frame()
+dataframe_pre_im <- data.frame()
 
 # Parcours de chaque gène dans la liste
-for (gene in genes_find) {
+for (gene in gene_find) {
   # Vérification si le gène est présent dans les noms de lignes des données
   if (gene %in% rownames(df_filtered_clean)) {
     # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
-    dataframe_methylation <- rbind(dataframe_methylation, df_filtered_clean[gene, , drop = FALSE])
+    dataframe_pre_im <- rbind(dataframe_pre_im, df_filtered_clean[gene, , drop = FALSE])
   }
 }
-dataframe_methylation
+dataframe_pre_im
 
-heatmap <- Heatmap(dataframe_methylation, name = "Methylation")
+heatmap <- Heatmap(dataframe_pre_im, name = "Pre-implantation embryo (WP3527)
+")
 
 
 heatmap
@@ -1015,20 +1108,113 @@ heatmap
 
 ```{r}
 
+#  Importer le fichier avec tout les gènes DNA Methylation  
+chemin <- "E:/stageAwa/first/firstdata/DNA_methylation.tsv"
+# Lire le fichier 
+Methyla <- read_tsv(chemin)
+
+gene_find <- Methyla$Gene
+
+# Création d'un nouveau dataframe vide
+dataframe_Methyla <- data.frame()
+
+# Parcours de chaque gène dans la liste
+for (gene in gene_find) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+    dataframe_Methyla <- rbind(dataframe_Methyla, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+dataframe_Methyla
+
+heatmap <- Heatmap(dataframe_Methyla, name = "Methylation",row_names_gp = gpar(fontsize = 5))
+
+
+heatmap
+
 
 
 ```
 
 
+### DNA Binding
+ATlas Human Protein 
+
+```{r}
+
+#  Importer le fichier avec tout les gènes DNA_binding  
+chemin <- "E:/stageAwa/first/firstdata/DNA_binding.tsv"
+# Lire le fichier 
+DNA_binding <- read_tsv(chemin)
+
+gene_find <- DNA_binding$Gene
+
+# Création d'un nouveau dataframe vide
+dataframe_DNA_binding <- data.frame()
+
+# Parcours de chaque gène dans la liste
+for (gene in gene_find) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+    dataframe_DNA_binding <- rbind(dataframe_DNA_binding, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+dataframe_DNA_binding
+
+heatmap <- Heatmap(dataframe_DNA_binding, name = "DNA_binding",row_names_gp = gpar(fontsize = 5))
+
+
+heatmap
+
+
+
+```
+
+
+### DNA Binding
+ATlas Human Protein 
+
+```{r}
+
+#  Importer le fichier avec tout les gènes epigenetic  
+chemin <- "E:/stageAwa/first/firstdata/epigenetic.tsv"
+# Lire le fichier 
+epigenetic <- read_tsv(chemin)
+
+gene_find <- epigenetic$Gene
+gene_find
+# Création d'un nouveau dataframe vide
+dataframe_epigenetic <- data.frame()
+
+# Parcours de chaque gène dans la liste
+for (gene in gene_find) {
+  # Vérification si le gène est présent dans les noms de lignes des données
+  if (gene %in% rownames(df_filtered_clean)) {
+    # Si le gène est présent, le récupérer et l'ajouter au nouveau dataframe
+    dataframe_epigenetic <- rbind(dataframe_epigenetic, df_filtered_clean[gene, , drop = FALSE])
+  }
+}
+dataframe_DNA_binding
+
+heatmap <- Heatmap(dataframe_epigenetic, name = "epigenetic",row_names_gp = gpar(fontsize = 5))
+
+
+heatmap
+
+
+
+```
 ### Un complexHeatmap pour les trois groupes les Kinomes , Krebs , Ribosomal et les facteurs de transcriptions 
 
 
 ```{r}
 # Création des Heatmaps
-heatmap1 <- Heatmap(dataframe_KN, name = "kinome")
+heatmap1 <- Heatmap(dataframe_KN, name = "kinome",row_names_gp = gpar(fontsize = 4.5))
 heatmap2 <- Heatmap(dataframe_krebs, name = "krebs")
-heatmap3 <- Heatmap(dataframe_TF, name = "TF")#,row_names_gp = gpar(fontsize = 4))
-heatmap4 <- Heatmap(dataframe_Ribosome, name = "Ribosomal")
+heatmap3 <- Heatmap(dataframe_TF, name = "TF",row_names_gp = gpar(fontsize = 4))#,row_names_gp = gpar(fontsize = 4))
+heatmap4 <- Heatmap(dataframe_Ribosome, name = "Ribosomal",row_names_gp = gpar(fontsize = 5))
 heatmap5 <- Heatmap(dataframe_phospho, name = "Oxidation phosphorylation")
 heatmap6 <- Heatmap(dataframe_MitcomplexIII, name = "MitcomplexIII")
 heatmap7 <- Heatmap(dataframe_Glycolandgluco, name = "Glycolysis and gluconeogenesis")
@@ -1037,25 +1223,22 @@ heatmap7 <- Heatmap(dataframe_Glycolandgluco, name = "Glycolysis and gluconeogen
 heatmap1
 heatmap2
 heatmap3
+
 heatmap4
 heatmap5
+grid::grid.get(grep('text', grid::grid.ls(print = FALSE)[1]$name,value = TRUE)[1])[[1]]
 heatmap6
 heatmap7
 # Extraction des données des heatmaps
 data_heatmap1 <- (heatmap1@matrix)
 data_heatmap2 <- (heatmap2@matrix)
 data_heatmap3 <- (heatmap3@matrix)
+
 data_heatmap4 <- (heatmap4@matrix)
 colnames(df_filtered_clean)
 
 # Combinaison des données
 combined_data <- rbind(data_heatmap1,data_heatmap2,data_heatmap3)
-
-# Calculer la moyenne de chaque gène
-gene_means <- rowMeans(combined_data)
-
-# Soustraire la moyenne de chaque gène à toutes les valeurs de ce gène
-centered_data <- t(apply(combined_data, 1, function(x) x - gene_means))
 
 # Création d'un nouveau objet Heatmap avec les données combinées
 library(dendextend)
@@ -1079,6 +1262,9 @@ draw(new_heatmap)
 
 # Fermer le fichier PDF
 dev.off()
+
+###A mettre pour voir le nom Après avoir imprimé la Heatmap, vous pouvez obtenir la liste réelle des noms de lignes en lancant ce code apres la heatmap 
+#grid::grid.get(grep('text', grid::grid.ls(print = FALSE)[1]$name,value = TRUE)[1])[[1]]
 
 ```
 
@@ -1308,6 +1494,33 @@ dev.off()
 ```
 
 
+
+### 
+
+```{r}
+# Calculer la moyenne de chaque gène
+gene_means <- rowMeans(c)
+
+# 2. Soustraire la moyenne de chaque gène à toutes les valeurs de ce gène
+centered_data <- t(apply(combined_data, 1, function(x) x - gene_means))
+centered_data
+
+center_scale <- function(x) {
+    scale(x, scale = FALSE)
+}
+center_scale(combined_data)
+
+# Créer un nouveau objet Heatmap avec les données centrées
+new_heatmap <- Heatmap(center_scale(combined_data), name = "Gene Centered Heatmap",
+                       show_heatmap_legend = TRUE,
+                       column_names_centered = TRUE,
+                       column_title = 'Samples',
+                       row_split = rep(c("Kinone", "Krebs", "TF"), 
+                                       c(nrow(data_heatmap1), nrow(data_heatmap2), nrow(data_heatmap3))),
+                       
+                       row_names_gp = gpar(fontsize = 2.5))
+draw(new_heatmap)
+```
 
 
 

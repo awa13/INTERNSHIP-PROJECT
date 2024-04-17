@@ -1,0 +1,359 @@
+    1  LS
+    2  cd Downloads/
+    3  ls
+    4  ls
+    5  LS
+    6  cd
+    7  cd
+    8  ssh [200~Le format FASTQ est un format de fichier utilisé pour stocker à la fois des séquences issues du séquençage et les scores de qualité associés à chacune des bases du read.
+    9  On propose dans ce projet de mettre en place des outils permettant :
+   10  de lire le contenu d'un fichier FASTQ
+   11  de filtrer les reads en fonction de différents critères
+   12  De tels outils sont souvent utilisés en amont de l'assemblage ou du mapping de reads.
+   13  La structuration d'un fichier FASTQ est décrite dans la page Wikipedia en lien ci-dessus.
+   14  La ligne décrivant les qualités est une suite de lettres. En fait la qualité correspond à une échalle de valeurs de 0 à ... (la valeur maximale de qualité dépend du type de séquenceur). Mais il a été choisit de représenter la qualité par des lettres pour avoir une lettre pour chaque base. Ainsi, pour un read de 89 bases, la ligne qualité comporte 89 lettres. La qualité la plus basse, 0, est exprimée par le caractère !, la qualité 33 est représentée par le caractère A. Le passage des lettres à la valeur numérique se fait grâce aux positions des lettres dans la table ASCII. ! est la lettre numéro 33, A est la lettre numéro 62. Le calcul se réalise donc simplement en retranchant 33 à la position de la lettre dans la table ASCII. En Python, la fonction ord permet d'obtenir la position d'une lettre dans la table ASCII.
+   15  ssh git@github.com:awa13/Manipulation-de-Jeux-de-Donn-es-de-Reads.git
+   16  cd Documents/
+   17  ls
+   18  cd
+   19  ls
+   20  cd Documents/
+   21  mkdir Premierprojet
+   22  cd Premierprojet/
+   23   git config --globl user.name "Awa Bousso"
+   24  git config --global user.name "awa"
+   25  cd 
+   26  cd Documents/
+   27  ls
+   28  cd Premierprojet/
+   29  git config --global user.email awabousso1213@gmail.com
+   30  git config --global color.diff auto
+   31  git config --global color.status auto 
+   32  git config --global core.branch auto
+   33  git  --global  core.editor vim
+   34  git --global core.editor vim
+   35  cd Documents/
+   36  cd Premierprojet/
+   37  ls
+   38  git config --global color.branch auto 
+   39  git config --global core.editor vim
+   40  git config --global core.editor vimdiff
+   41  git init 
+   42  ls -a
+   43  git add index.html styles.css
+   44  ls
+   45  ls -a .git/
+   46  cd config
+   47  pwd
+   48  cd
+   49  ls
+   50  cd Documents/
+   51  cd Premierprojet/
+   52  edit
+   53  #!/bin/bash
+   54  touch index.html
+   55  gedit index.html 
+   56  cat index.html 
+   57  gedit
+   58  vi
+   59  vi index.html 
+   60  cat index.html 
+   61  ls
+   62  vi index.html 
+   63  vi 
+   64  vi index.html 
+   65  cd document
+   66  cd Documents/
+   67  cd Premierprojet/
+   68  git init
+   69  ls
+   70  cat index.html 
+   71  emacs
+   72  vi
+   73  cat index.html 
+   74  git config --global core.editor "'C:/Program Files (x86)/sublime text 3/subl.exe' -w"
+   75  cd Documents/Premierprojet/
+   76  subst.exe 
+   77  sublime text
+   78  git config --global core.editor "subl -n -w"
+   79  subl -n -w index.html 
+   80  vim index.html 
+   81  visual
+   82  export EDITOR=$VISUAL
+   83  Visual
+   84  git config --edit --global
+   85  git add index.html 
+   86  touch styles.css
+   87  git add styles.css 
+   88  git commit -m “Ajout des fichiers html et css de base”
+   89  git commit -h
+   90  git commit -m "Ajout des fichiers html et css de base"
+   91  git push
+   92  cd .git/
+   93  ls
+   94  ssh-keygen -t ed25519 -C "awabousso1213@gmail.com"
+   95  ls
+   96  pbcopy < ~/.ssh/id_ed25519.pub
+   97  cd ..
+   98  ls
+   99  git status
+  100  git add index.html 
+  101   ssh-keygen -t ed25519 -C "awabousso1213@gmail.com"
+  102  clip < ~/.ssh/id_ed25519.pub
+  103  git remote add 
+  104  git remote add git@github.com:awa13/-OpenclassroomsProject-.git
+  105  git remote add origin [200~git@github.com:awa13/-OpenclassroomsProject-.git~
+  106  git remote add origin git@github.com:awa13/-OpenclassroomsProject-.git
+  107  git remote add 
+  108  git remote add origin git@github.com:awa13/-OpenclassroomsProject-.git
+  109  git remote add  git@github.com:awa13/-OpenclassroomsProject-.git
+  110  git remote add origin ^[[200~git@github.com:awa13/-OpenclassroomsProject-.git~
+  111  git branch -M main
+  112  git push -u origin main 
+  113  git add index.html 
+  114  git commit -m “Modification du titre H1”
+  115  git commit -m "Modification du titre H1"
+  116  git push origin main
+  117  git remote add git@github.com:awa13/-OpenclassroomsProject-.git
+  118  git remote add                                                                                          origin git@github.com:awa13/-OpenclassroomsProject-.git
+  119  git remote -v
+  120  git branch -M main
+  121  git push -u origin main
+  122  git push -u origin main 
+  123  git remove set-url origin https://github.com/awa13/-OpenclassroomsProject-.git
+  124  git remote set-url origin https://github.com/awa13/-OpenclassroomsProject-.git
+  125  git push -u origin main
+  126  git add index.html 
+  127  git commit -m "Modification du titre H1"
+  128  git push origin main
+  129  git branch
+  130  git branch cagnotte
+  131  git branch
+  132  git checkout cagnotte
+  133  git branch
+  134  touch cagnotte.txt
+  135  git add cagnotte.txt 
+  136  git commit -m "Réalisation de la partie cagnotte côté front end"
+  137  git push -u origin cagnotte 
+  138  git checkout main
+  139  git branch 
+  140  git merge cagnotte 
+  141  git clone git@github.com:awa13/-OpenclassroomsProject-.git
+  142  cd 7162856-G-rez-Git-et-GitHub
+  143  git pull origin main
+  144  git branch update-color
+  145  git checkout update-color 
+  146   ssh-keygen -t ed25519 -C "awabousso1213@gmail.com"
+  147  ls
+  148  clip < ~/.ssh/id_ed25519.pub
+  149   ssh-keygen -t ed25519 -C "awabousso1213@gmail.com"
+  150  chmod 400 .ssh/key
+  151  ls
+  152  git clone https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  153  git remove set-url origin https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  154  ls
+  155  cd  OneDrive/
+  156  cd Bureau/
+  157  cd MASTERMISO2/
+  158  cd PFE/
+  159  git push origin main
+  160  git clone https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  161  git remove set-url origin https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  162  git remote set-url origin https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  163   ssh-keygen -t ed25519 -C "awabousso1213@gmail.com"
+  164  mkdir config
+  165  ls
+  166  more ~/OneDrive/Bureau/MASTERMISO2/PFE/key.pub
+  167  git clone https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  168  git remote set-url origin https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  169  git init
+  170  git stash save -u
+  171  git remote set-url origin https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  172  git remote set-url origin https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  173  git remote set-url origin https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  174  git remote add origin https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  175  ls
+  176  git push origin main
+  177  git push origin development 
+  178  git push origin PFE_MISO_2024/
+  179  cmore key.pub 
+  180  more key.pub 
+  181  cat key.pub 
+  182  mkdir origin
+  183  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPAwVRAKsvyx2k/QvuvhevJEzAaca252+83svM7hNRXT awabousso1213@gmail.com
+  184  git clone https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  185  git remote add origin https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  186  git remote add origin https://github.com/Yohan-HernandezCourbevoie/PFE_MISO_2024.git
+  187  git push origin main
+  188  cd 
+  189  ls
+  190  git config --global user.name "Awa Bousso" $ git config --global user.email awabousso1213@gmail.com
+  191  git config --global user.name "Awa Bousso" $ git config --global user.email awabousso1213@gmail.com
+  192  git config --global color.diff auto $ git config --global color.status auto $ git config --global color.branch auto
+  193  ls
+  194  cd OneDrive/
+  195  cd Bureau/
+  196  cd MASTERMISO2
+  197  cd ..
+  198  cd STAGE/
+  199  mkdir projetStage 
+  200  cd projetStage/
+  201  git config --global user.name "Awa Bousso"
+  202  git config user.email awabousso1213@gmail.com
+  203  git config --global user.email awabousso1213@gmail.com
+  204  git config --global color.diff auto 
+  205  fit config color.status auto
+  206  git config --global color.branch auto
+  207  git config --global core.editor vim
+  208  git config --global merge.tool vimdiff
+  209  git init
+  210  ls -a
+  211  git add distribution_des_données.docx 
+  212  git status
+  213  git add nomenclature.docx 
+  214  git status
+  215   git commit -m "Ajout de fichiers "
+  216  ls -d
+  217  cd ./
+  218  ls -a
+  219  cd ./
+  220  ssh-keygen -t ed25519 -C "awabousso1213@gmail.com"
+  221  ls
+  222  clip < ~/.ssh/id-github_ed25519.pub
+  223  clip < ~/.ssh/id_github_ed25519.pub
+  224  clip < ~/.ssh/id_github_ed25519.pub
+  225  ssh -i /path/to/key -vT git@github.com
+  226  ssh-keygen -t ed25519 -C "awabousso1213@gmail.com"
+  227  pbcopy < ~/.ssh/id_github_ed25519.pub
+  228  clip < ~/.ssh/id_github_ed25519.pub
+  229  ls -al ~/.ssh
+  230  clip < ~/.ssh/id_ed25519.pub
+  231  git remote add git@github.com:awa13/STAGEPROJECT.git
+  232  git remote add origin git@github.com:awa13/STAGEPROJECT.git
+  233  git branch -M main
+  234  git push -u origin main
+  235  git push -u origin main
+  236  git pull
+  237  git push -u origin main
+  238  git pull remote main
+  239  git push origin main
+  240  git branch -M stage
+  241  git push origin stage
+  242  git add distribution_des_données.docx 
+  243  git commit -m "Ajout du fichier distribution"
+  244  git push -u origin stage
+  245  git push origin stage
+  246  git branch
+  247  git branch cagnotte 
+  248  git branch 
+  249  git checkout cagnotte 
+  250  touch cagnotte.txt
+  251  git add cagnotte.txt 
+  252  git commit -m "test"
+  253  git push -u cagnotte
+  254  git push -u origin cagnotte
+  255  git checkout stage
+  256  git merge main
+  257  git merge cagnotte 
+  258  git clone https://github.com/awa13/STAGEPROJECT.git
+  259  git commit
+  260  git branch -d cagnotte 
+  261  git status
+  262  git stash
+  263  git stash apply
+  264  git stash list
+  265  git log commit
+  266  git add Distribution\ du\ jeu\ de\ données.pdf 
+  267  git status
+  268  git push stage
+  269  git push -u origine stage 
+  270  git push -u origin stage
+  271  git add Distribution\ du\ jeu\ de\ données.pdf
+  272  git commit
+  273  git init
+  274  cd OneDrive/
+  275  cd Bureau/
+  276  cd STAGE/
+  277  cd projetStage/
+  278  ls
+  279  git branch
+  280  ls
+  281   git remote add origin git@github.com:awa13/STAGEPROJECT.git
+  282  git branch
+  283  git add origin stage
+  284  git push origin stage
+  285  git remote add origin
+  286  [200~git remote add origin git@github.com:awa13/STAGEPROJECT.git~
+  287  git remote add origin git@github.com:awa13/STAGEPROJECT.git
+  288  git branch -M stage
+  289  git push origin main
+  290  git push origin stage
+  291  ssh -T git@github.com
+  292  git config --local -e
+  293  git remote add git@github.com:awa13/STAGEPROJECT.git
+  294  git remote add  origin git@github.com:awa13/STAGEPROJECT.git
+  295  git remote add origin git@github.com:awa13/STAGEPROJECT.git
+  296  git remote add origin git@github.com:awa13/STAGEPROJECT.git
+  297  git push origin stage
+  298  ls
+  299  git add DistributionDistribution du jeu de données.pdf
+  300  git add Distributiondujeudedonnées.pdf 
+  301  git status
+  302  git push origin stage
+  303  traceroute -T -p 22 github.com
+  304  ssh -T git@ssh.github.com -p 443
+  305  git push origin stage
+  306  git clone https://github.com/awa13/STAGEPROJECT.git
+  307  ls
+  308  git status
+  309  ls 
+  310  cd OneDrive/
+  311  cd Bureau/
+  312  cd STAGE/
+  313  ls
+  314  cd projetStage/
+  315  git status
+  316  git push origin stage
+  317  ls
+  318  git add DEBUT\ MEMOIRE.docx 
+  319  git push origin stage
+  320  git status
+  321  git push origin stage
+  322  git remote add origin
+  323  git
+  324  git add DEBUTMEMOIRE.docx 
+  325  git push origin stage
+  326  git remote add origine git@github.com:awa13/STAGEPROJECT.git
+  327  git add DEBUTMEMOIRE.docx 
+  328  git push -u origin main
+  329  git remote add origine https://github.com/awa13/STAGEPROJECT.git
+  330  git version
+  331  [200~git config --global user.name "John Doe"
+  332  git config --global user.name "Awa Bousso"
+  333  git config --global user.email awabousso.gueye.etu@univ-lille.fr
+  334  cd OneDrive/
+  335  cd Bureau/
+  336  cd STAGE/
+  337  git clone https://github.com/awa13/INTERNSHIP-PROJECT.git
+  338  git init
+  339  ls
+  340  cd INTERNSHIP-PROJECT
+  341  git init
+  342  git add *
+  343  git commit -m "ajout de nouveau dossier"
+  344  git status
+  345  git add
+  346  ls
+  347  git push
+  348  # Enregistrer l'historique des commandes dans un fichier
+  349  export PROMPT_COMMAND='history -a'
+  350  export PROMPT_COMMAND='history -a'
+  351  source ~/.bashrc
+  352  source ~/OneDrive/Bureau/STAGE/INTERNSHIP-PROJECT
+  353  touch ~/.bashrc
+  354  nano ~/.bashrc
+  355  source ~/.bashrc
+  356  history
+  357  history less
+  358  history | less
+  359  history > historique_commands.txt

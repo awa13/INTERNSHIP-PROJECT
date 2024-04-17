@@ -1,0 +1,17 @@
+samples	stades
+[1]410_EJ10-test2_OT_Slot2-2_1_6949.d.PG.Quantity	EJ10
+[2]410_EJ10-test2_Slot2-2_1_6947.d.PG.Quantity	EJ10
+[3]410_EJ10-test2_TClow_Slot2-3_1_6951.d.PG.Quantity	EJ10
+[4]410_EJ10-test5_TClow_Slot2-1_1_6953.d.PG.Quantity	EJ10
+[5]410_EJ10-test_Slot2-1_1_6944.d.PG.Quantity	EJ10
+[6]404_PB1_Slot1-22_1_5701.d.PG.Quantity	PB
+[7]404_PB2_Slot1-16_1_5695.d.PG.Quantity	PB
+[8]404_PB3_Slot1-14_1_5693.d.PG.Quantity	PB
+[9]404_PB4_Slot1-20_1_5699.d.PG.Quantity	PB
+[10]404_PB5_Slot1-18_1_5697.d.PG.Quantity	PB
+[11]404_PM2_Slot1-15_1_5694.d.PG.Quantity	PM
+[12]404_PM3_Slot1-17_1_5696.d.PG.Quantity	PM
+[13]404_PM4_Slot1-19_1_5698.d.PG.Quantity	PM
+[14]404_PM5_Slot1-21_1_5700.d.PG.Quantity	PM
+[15]404_PM6_Slot1-23_1_5702.d.PG.Quantity	PM
+[16]404_Poolx5MC_Slot1-33_1_5531.d.PG.Quantity	PM
